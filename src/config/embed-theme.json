@@ -1,12 +1,16 @@
 {
   "brand": "DM REALM ALPHA",
-  "banner": "https://i.imgur.com/9c9xX3P.jpeg",
+  "banner": "https://media.discordapp.net/attachments/873126567134494742/1429862125177667594/file_000000002ab86246b8dd9f8e630d018f.jpg?format=webp&width=1240&height=826",
   "footer": "DM REALM ALPHA • Nihil Difficile Volenti",
   "color": {
-    "primary": 3092790,
+    "primary": 2829099,
     "success": 5763719,
     "danger": 14495300,
     "warning": 16753920,
     "info": 4886754
+  },
+  "decorations": {
+    "top": "╔════════════════════════╗",
+    "bottom": "╚════════════════════════╝"
   }
 }
