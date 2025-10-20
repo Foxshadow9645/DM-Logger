@@ -1,0 +1,12 @@
+{
+  "brand": "DM REALM ALPHA",
+  "banner": "https://i.imgur.com/9c9xX3P.jpeg",
+  "footer": "DM REALM ALPHA • Nihil Difficile Volenti",
+  "color": {
+    "primary": 3092790,
+    "success": 5763719,
+    "danger": 14495300,
+    "warning": 16753920,
+    "info": 4886754
+  }
+}

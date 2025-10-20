@@ -1,0 +1,15 @@
+{
+  "name": "dm-logger",
+  "version": "1.0.0",
+  "description": "DM REALM ALPHA ✠ Advanced Military Logging System",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.15.3",
+    "node-fetch": "^3.3.2",
+    "dotenv": "^16.4.5"
+  }
+}
