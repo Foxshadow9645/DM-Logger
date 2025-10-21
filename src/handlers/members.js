@@ -5,87 +5,84 @@ import { sendWebhook } from "../core/logger.js";
 export default function memberHandler(client, urls) {
 
   // 🟩 MEMBER JOIN
-  client.on("guildMemberAdd", member => {
-    const joinDescription = [
+  client.on("guildMemberAdd", async member => {
+    const joinDesc = [
       "🟢 **Protocollo di ingresso completato**",
-      ``,
+      "",
       `Un nuovo membro ha cominciato a far parte di **${member.guild.name}**.`,
-      ``,
+      "",
       `👤 **Profilo**`,
       `> ${safeUser(member.user)}`,
       `> ID: ${member.id}`,
-      ``,
+      "",
       `📍 **Canale di ingresso**`,
       `> Registrato automaticamente`,
-      ``,
+      "",
       `🕒 **Orario evento**`,
       `> <t:${Math.floor(Date.now() / 1000)}:F>`,
-      ``,
+      "",
       `🧾 **Tracciamento**`,
       `> Azione automatica del sistema`
     ].join("\n");
 
-    sendWebhook(
-      urls.join,
-      logEmbed(
-        "<:join_alpha:1429888497212456970> NUOVO MEMBRO",
-        joinDescription,
-        0x1F6C33, // Verde autoritario
-        {
-          footer: {
-            text: "Nihil Difficile Volenti • Sistema di Sorveglianza Attiva\nDM REALM ALPHA — Messaggio automatico"
-          },
-          image: {
-            url: "https://media.discordapp.net/attachments/873126567134494742/1429862125177667594/file_000000002ab86246b8dd9f8e630d018f.jpg"
-          },
-          author: {
-            name: "DM REALM ALPHA LOGGER",
-            url: "https://discord.com/oauth2/authorize?client_id=1429110896910798928",
-            icon_url: "https://cdn-icons-png.flaticon.com/512/892/892781.png"
-          }
-        }
-      )
+    const embed = logEmbed(
+      "<:join_alpha:1429888497212456970> NUOVO MEMBRO",
+      joinDesc,
+      0x1F6C33 // Verde militare
     );
+
+    // Aggiungiamo manualmente i campi extra
+    embed.embeds[0].author = {
+      name: "DM REALM ALPHA LOGGER",
+      url: "https://discord.com/oauth2/authorize?client_id=1429110896910798928",
+      icon_url: "https://cdn-icons-png.flaticon.com/512/892/892781.png"
+    };
+    embed.embeds[0].footer = {
+      text: "Nihil Difficile Volenti • Sistema di Sorveglianza Attiva\nDM REALM ALPHA — Messaggio automatico"
+    };
+    embed.embeds[0].image = {
+      url: "https://media.discordapp.net/attachments/873126567134494742/1429862125177667594/file_000000002ab86246b8dd9f8e630d018f.jpg"
+    };
+
+    await sendWebhook(urls.join, embed);
   });
 
   // 🟥 MEMBER LEAVE
-  client.on("guildMemberRemove", member => {
-    const leaveDescription = [
+  client.on("guildMemberRemove", async member => {
+    const leaveDesc = [
       "🔻 **Disconnessione rilevata**",
-      ``,
+      "",
       `Un membro ha lasciato la community **${member.guild.name}**.`,
-      ``,
+      "",
       `👤 **Profilo**`,
       `> ${safeUser(member.user)}`,
       `> ID: ${member.id}`,
-      ``,
+      "",
       `📅 **Ultima attività rilevata**`,
       `> <t:${Math.floor(Date.now() / 1000)}:F>`,
-      ``,
+      "",
       `🧾 **Tracciamento**`,
       `> Evento automatico — nessun intervento manuale`
     ].join("\n");
 
-    sendWebhook(
-      urls.leave,
-      logEmbed(
-        "<:leave_alpha:1429889479962787882> MEMBRO USCITO",
-        leaveDescription,
-        0xDD2E44, // Rosso autoritario
-        {
-          footer: {
-            text: "Nihil Difficile Volenti • Sistema di Sorveglianza Attiva\nDM REALM ALPHA — Registro attività aggiornato"
-          },
-          image: {
-            url: "https://media.discordapp.net/attachments/873126567134494742/1429862125177667594/file_000000002ab86246b8dd9f8e630d018f.jpg"
-          },
-          author: {
-            name: "DM REALM ALPHA LOGGER",
-            url: "https://discord.com/oauth2/authorize?client_id=1429110896910798928",
-            icon_url: "https://cdn-icons-png.flaticon.com/512/892/892781.png"
-          }
-        }
-      )
+    const embed = logEmbed(
+      "<:leave_alpha:1429889479962787882> MEMBRO USCITO",
+      leaveDesc,
+      0xDD2E44 // Rosso autoritario
     );
+
+    embed.embeds[0].author = {
+      name: "DM REALM ALPHA LOGGER",
+      url: "https://discord.com/oauth2/authorize?client_id=1429110896910798928",
+      icon_url: "https://cdn-icons-png.flaticon.com/512/892/892781.png"
+    };
+    embed.embeds[0].footer = {
+      text: "Nihil Difficile Volenti • Sistema di Sorveglianza Attiva\nDM REALM ALPHA — Registro attività aggiornato"
+    };
+    embed.embeds[0].image = {
+      url: "https://media.discordapp.net/attachments/873126567134494742/1429862125177667594/file_000000002ab86246b8dd9f8e630d018f.jpg"
+    };
+
+    await sendWebhook(urls.leave, embed);
   });
 }
