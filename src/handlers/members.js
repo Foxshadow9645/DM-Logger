@@ -28,10 +28,9 @@ export default function memberHandler(client, urls) {
     const embed = logEmbed(
       "<:join_alpha:1429888497212456970> NUOVO MEMBRO",
       joinDesc,
-      0x1F6C33 // Verde militare
+      0x1F6C33
     );
 
-    // Aggiungiamo manualmente i campi extra
     embed.embeds[0].author = {
       name: "DM REALM ALPHA LOGGER",
       url: "https://discord.com/oauth2/authorize?client_id=1429110896910798928",
@@ -43,6 +42,10 @@ export default function memberHandler(client, urls) {
     embed.embeds[0].image = {
       url: "https://media.discordapp.net/attachments/873126567134494742/1429862125177667594/file_000000002ab86246b8dd9f8e630d018f.jpg"
     };
+
+    // 👇 qui aggiungiamo nome e avatar del webhook
+    embed.username = "DM Alpha";
+    embed.avatar_url = "https://media.istockphoto.com/id/690772190/it/vettoriale/concetto-di-occhio-elettronico-del-grande-fratello-tecnologie-per-la-sorveglianza-globale.jpg?s=612x612&w=0&k=20&c=mmFwIgeRe5ApHaVBHzF4HrfXmA-OwX3EXrgpFmkJqp0=";
 
     await sendWebhook(urls.join, embed);
   });
@@ -68,7 +71,7 @@ export default function memberHandler(client, urls) {
     const embed = logEmbed(
       "<:leave_alpha:1429889479962787882> MEMBRO USCITO",
       leaveDesc,
-      0xDD2E44 // Rosso autoritario
+      0xDD2E44
     );
 
     embed.embeds[0].author = {
@@ -82,6 +85,9 @@ export default function memberHandler(client, urls) {
     embed.embeds[0].image = {
       url: "https://media.discordapp.net/attachments/873126567134494742/1429862125177667594/file_000000002ab86246b8dd9f8e630d018f.jpg"
     };
+
+    embed.username = "DM Alpha";
+    embed.avatar_url = "https://media.istockphoto.com/id/690772190/it/vettoriale/concetto-di-occhio-elettronico-del-grande-fratello-tecnologie-per-la-sorveglianza-globale.jpg?s=612x612&w=0&k=20&c=mmFwIgeRe5ApHaVBHzF4HrfXmA-OwX3EXrgpFmkJqp0=";
 
     await sendWebhook(urls.leave, embed);
   });
