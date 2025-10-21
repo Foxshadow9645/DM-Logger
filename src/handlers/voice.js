@@ -1,10 +1,11 @@
 import { logEmbed } from "../core/embeds.js";
 import { sendWebhook } from "../core/logger.js";
+import { AuditLogEvent } from "discord.js";
 
 export default function voiceHandler(client, urls) {
   client.on("voiceStateUpdate", async (oldState, newState) => {
     const member = newState.member;
-    if (!member || member.user.bot) return; // ignora i bot
+    if (!member || member.user.bot) return;
 
     const oldChannel = oldState.channel;
     const newChannel = newState.channel;
@@ -35,6 +36,17 @@ export default function voiceHandler(client, urls) {
       return e;
     };
 
+    const getExecutor = async (type) => {
+      try {
+        const logs = await member.guild.fetchAuditLogs({ limit: 1, type });
+        const entry = logs.entries.first();
+        if (entry && entry.target.id === member.id) {
+          return entry.executor;
+        }
+      } catch {}
+      return null;
+    };
+
     // ─────────────────────────────
     // JOIN
     if (!oldChannel && newChannel) {
@@ -54,24 +66,29 @@ export default function voiceHandler(client, urls) {
       );
     }
 
-    // LEAVE
+    // LEAVE o KICK (distinzione tramite audit log)
     if (oldChannel && !newChannel) {
+      const executor = await getExecutor(AuditLogEvent.MemberDisconnect);
+      const forced = !!executor;
       const desc = [
-        "🔻 **Uscita vocale rilevata**",
+        forced ? "🚨 **Disconnessione forzata**" : "🔻 **Uscita vocale rilevata**",
         "",
         `👤 Utente: <@${member.id}>`,
-        `📍 Canale lasciato: <#${oldChannel.id}>`,
+        forced ? `👮 Moderatore: <@${executor.id}>` : "",
+        `📍 Canale: <#${oldChannel.id}>`,
         "",
         `🕒 Orario: ${now}`,
         "",
-        `🧾 Tracciamento: Disconnessione automatica`
+        forced
+          ? "🧾 Tracciamento: Azione di moderazione registrata"
+          : "🧾 Tracciamento: Disconnessione automatica"
       ].join("\n");
       return sendWebhook(
         urls.voice,
         embedBase(
           "<:vcdisconnect_alpha:1430232401556148376> VC LEAVE",
           desc,
-          0xdd2e44
+          forced ? 0xff5555 : 0xdd2e44
         )
       );
     }
@@ -96,7 +113,7 @@ export default function voiceHandler(client, urls) {
     }
 
     // ─────────────────────────────
-    // SELF MUTE / UNMUTE
+    // SELF MUTE / UNMUTE MIC
     if (!oldState.selfMute && newState.selfMute) {
       const desc = [
         "🔇 **Microfono disattivato manualmente**",
@@ -104,17 +121,11 @@ export default function voiceHandler(client, urls) {
         `👤 Utente: <@${member.id}>`,
         `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
         "",
-        `🕒 Orario: ${now}`,
-        "",
-        `🧾 Tracciamento: Azione utente — microfono disattivato`
+        `🕒 Orario: ${now}`
       ].join("\n");
       return sendWebhook(
         urls.voice,
-        embedBase(
-          "<:mutedmicrophonevc_alpha:1430233570198159433> MIC MUTED",
-          desc,
-          0x808080
-        )
+        embedBase("<:mutedmicrophonevc_alpha:1430233570198159433> MIC MUTED", desc, 0x808080)
       );
     }
 
@@ -125,22 +136,48 @@ export default function voiceHandler(client, urls) {
         `👤 Utente: <@${member.id}>`,
         `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
         "",
-        `🕒 Orario: ${now}`,
-        "",
-        `🧾 Tracciamento: Azione utente — microfono riattivato`
+        `🕒 Orario: ${now}`
       ].join("\n");
       return sendWebhook(
         urls.voice,
-        embedBase(
-          "<:vcmicrophone_alpha:1430232637087158373> MIC UNMUTED",
-          desc,
-          0x2ecc71
-        )
+        embedBase("<:vcmicrophone_alpha:1430232637087158373> MIC UNMUTED", desc, 0x2ecc71)
       );
     }
 
     // ─────────────────────────────
-    // STREAMING START / STOP (corrette)
+    // SELF AUDIO (DEAFEN)
+    if (!oldState.selfDeaf && newState.selfDeaf) {
+      const desc = [
+        "🔇 **Audio disattivato manualmente**",
+        "",
+        `👤 Utente: <@${member.id}>`,
+        `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
+        "",
+        `🕒 Orario: ${now}`
+      ].join("\n");
+      return sendWebhook(
+        urls.voice,
+        embedBase("<:automutedvc_alpha:1430232108856770641> AUDIO MUTED", desc, 0x808080)
+      );
+    }
+
+    if (oldState.selfDeaf && !newState.selfDeaf) {
+      const desc = [
+        "🔊 **Audio riattivato manualmente**",
+        "",
+        `👤 Utente: <@${member.id}>`,
+        `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
+        "",
+        `🕒 Orario: ${now}`
+      ].join("\n");
+      return sendWebhook(
+        urls.voice,
+        embedBase("<:vcunmuted_alpha:1430232561300541452> AUDIO UNMUTED", desc, 0x2ecc71)
+      );
+    }
+
+    // ─────────────────────────────
+    // STREAM START / STOP (corretto)
     if (!oldState.streaming && newState.streaming) {
       const desc = [
         "📡 **Streaming avviato**",
@@ -148,17 +185,11 @@ export default function voiceHandler(client, urls) {
         `👤 Utente: <@${member.id}>`,
         `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
         "",
-        `🕒 Orario: ${now}`,
-        "",
-        `🧾 Tracciamento: Avvio sessione streaming`
+        `🕒 Orario: ${now}`
       ].join("\n");
       return sendWebhook(
         urls.voice,
-        embedBase(
-          "<:screensharevc_alpha:1430245124457107527> STREAM START",
-          desc,
-          0x0074d9
-        )
+        embedBase("<:screensharevc_alpha:1430245124457107527> STREAM START", desc, 0x0074d9)
       );
     }
 
@@ -169,113 +200,114 @@ export default function voiceHandler(client, urls) {
         `👤 Utente: <@${member.id}>`,
         `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
         "",
-        `🕒 Orario: ${now}`,
-        "",
-        `🧾 Tracciamento: Fine condivisione schermo`
+        `🕒 Orario: ${now}`
       ].join("\n");
       return sendWebhook(
         urls.voice,
-        embedBase(
-          "<:screenshareendvc_alpha:1430244985466388630> STREAM END",
-          desc,
-          0x555555
-        )
+        embedBase("<:screenshareendvc_alpha:1430244985466388630> STREAM END", desc, 0x555555)
       );
     }
 
     // ─────────────────────────────
-    // SERVER MUTE / UNMUTE (AZIONI DA STAFF)
-    if (!oldState.serverMute && newState.serverMute) {
-      const executor = newState.guild.members.me; // se vuoi, qui si può tracciare l’audit log
+    // CAMERA ON/OFF
+    if (!oldState.selfVideo && newState.selfVideo) {
       const desc = [
-        "🚫 **Mute applicato dal personale di moderazione**",
+        "🎥 **Videocamera attivata**",
         "",
-        `👤 Utente coinvolto: <@${member.id}>`,
-        `👮 Moderatore: <@${executor.id}>`,
+        `👤 Utente: <@${member.id}>`,
         `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
         "",
-        `🕒 Orario: ${now}`,
-        "",
-        `🧾 Tracciamento: Azione disciplinare registrata`
+        `🕒 Orario: ${now}`
       ].join("\n");
       return sendWebhook(
         urls.voice,
-        embedBase(
-          "<:modsupressedmicrophone_alpha:1430232939790078113> SERVER MUTE",
-          desc,
-          0xe74c3c
-        )
+        embedBase("<:camera_alpha:1430256100481044480> CAMERA ON", desc, 0x00b894)
+      );
+    }
+
+    if (oldState.selfVideo && !newState.selfVideo) {
+      const desc = [
+        "📷 **Videocamera disattivata**",
+        "",
+        `👤 Utente: <@${member.id}>`,
+        `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
+        "",
+        `🕒 Orario: ${now}`
+      ].join("\n");
+      return sendWebhook(
+        urls.voice,
+        embedBase("<:uncamera_alpha:1430256010702098502> CAMERA OFF", desc, 0x636e72)
+      );
+    }
+
+    // ─────────────────────────────
+    // SERVER MUTE / UNMUTE (azione staff)
+    if (!oldState.serverMute && newState.serverMute) {
+      const executor = await getExecutor(AuditLogEvent.MemberUpdate);
+      const desc = [
+        "🚫 **Mute vocale forzato dallo staff**",
+        "",
+        `👤 Utente coinvolto: <@${member.id}>`,
+        executor ? `👮 Moderatore: <@${executor.id}>` : "👮 Moderatore: Sconosciuto",
+        `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
+        "",
+        `🕒 Orario: ${now}`
+      ].join("\n");
+      return sendWebhook(
+        urls.voice,
+        embedBase("<:modsupressedmicrophone_alpha:1430232939790078113> SERVER MUTE", desc, 0xe74c3c)
       );
     }
 
     if (oldState.serverMute && !newState.serverMute) {
-      const executor = newState.guild.members.me;
+      const executor = await getExecutor(AuditLogEvent.MemberUpdate);
       const desc = [
         "✅ **Mute vocale rimosso dallo staff**",
         "",
         `👤 Utente coinvolto: <@${member.id}>`,
-        `👮 Moderatore: <@${executor.id}>`,
+        executor ? `👮 Moderatore: <@${executor.id}>` : "👮 Moderatore: Sconosciuto",
         `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
         "",
-        `🕒 Orario: ${now}`,
-        "",
-        `🧾 Tracciamento: Ripristino vocale registrato`
+        `🕒 Orario: ${now}`
       ].join("\n");
       return sendWebhook(
         urls.voice,
-        embedBase(
-          "<:vcmicrophone_alpha:1430232637087158373> SERVER UNMUTE",
-          desc,
-          0x2ecc71
-        )
+        embedBase("<:vcmicrophone_alpha:1430232637087158373> SERVER UNMUTE", desc, 0x2ecc71)
       );
     }
 
-    // ─────────────────────────────
-    // SERVER DEAF / UNDEAF (audio bloccato / ripristinato)
+    // SERVER DEAF / UNDEAF
     if (!oldState.serverDeaf && newState.serverDeaf) {
-      const executor = newState.guild.members.me;
+      const executor = await getExecutor(AuditLogEvent.MemberUpdate);
       const desc = [
         "🔒 **Audio disattivato dallo staff**",
         "",
         `👤 Utente coinvolto: <@${member.id}>`,
-        `👮 Moderatore: <@${executor.id}>`,
+        executor ? `👮 Moderatore: <@${executor.id}>` : "👮 Moderatore: Sconosciuto",
         `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
         "",
-        `🕒 Orario: ${now}`,
-        "",
-        `🧾 Tracciamento: Audio forzatamente disattivato`
+        `🕒 Orario: ${now}`
       ].join("\n");
       return sendWebhook(
         urls.voice,
-        embedBase(
-          "<:modmutedvc_alpha:1430232872769421384> AUDIO OFF",
-          desc,
-          0xe67e22
-        )
+        embedBase("<:modmutedvc_alpha:1430232872769421384> SERVER DEAF", desc, 0xe67e22)
       );
     }
 
     if (oldState.serverDeaf && !newState.serverDeaf) {
-      const executor = newState.guild.members.me;
+      const executor = await getExecutor(AuditLogEvent.MemberUpdate);
       const desc = [
         "🔓 **Audio riattivato dallo staff**",
         "",
         `👤 Utente coinvolto: <@${member.id}>`,
-        `👮 Moderatore: <@${executor.id}>`,
+        executor ? `👮 Moderatore: <@${executor.id}>` : "👮 Moderatore: Sconosciuto",
         `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
         "",
-        `🕒 Orario: ${now}`,
-        "",
-        `🧾 Tracciamento: Ripristino audio confermato`
+        `🕒 Orario: ${now}`
       ].join("\n");
       return sendWebhook(
         urls.voice,
-        embedBase(
-          "<:vcmicrophone_alpha:1430232637087158373> AUDIO RESTORED",
-          desc,
-          0x27ae60
-        )
+        embedBase("<:vcunmuted_alpha:1430232561300541452> SERVER UNDEAF", desc, 0x27ae60)
       );
     }
   });
