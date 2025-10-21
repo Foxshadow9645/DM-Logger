@@ -19,7 +19,7 @@ export default function voiceHandler(client, urls) {
         icon_url: "https://cdn-icons-png.flaticon.com/512/892/892781.png"
       },
       footer: {
-        text: "Nihil Difficile Volenti • Sistema di Sorveglianza Attiva\nDM REALM ALPHA — Monitor vocale"
+        text: "Nihil Difficile Volenti • Sistema di Sorveglianza Attiva\nDM REALM ALPHA — Monitor vocale attivo"
       },
       thumbnail: { url: avatar },
       image: {
@@ -36,6 +36,7 @@ export default function voiceHandler(client, urls) {
       return e;
     };
 
+    // Utility: chi ha eseguito l’azione (dall’audit log)
     const getExecutor = async (type) => {
       try {
         const logs = await member.guild.fetchAuditLogs({ limit: 1, type });
@@ -58,7 +59,7 @@ export default function voiceHandler(client, urls) {
         "",
         `🕒 Orario: ${now}`,
         "",
-        `🧾 Tracciamento: Accesso registrato automaticamente`
+        "🧾 Tracciamento: Accesso registrato automaticamente"
       ].join("\n");
       return sendWebhook(
         urls.voice,
@@ -66,7 +67,7 @@ export default function voiceHandler(client, urls) {
       );
     }
 
-    // LEAVE o KICK (distinzione tramite audit log)
+    // LEAVE o KICK (audit log)
     if (oldChannel && !newChannel) {
       const executor = await getExecutor(AuditLogEvent.MemberDisconnect);
       const forced = !!executor;
@@ -80,8 +81,8 @@ export default function voiceHandler(client, urls) {
         `🕒 Orario: ${now}`,
         "",
         forced
-          ? "🧾 Tracciamento: Azione di moderazione registrata"
-          : "🧾 Tracciamento: Disconnessione automatica"
+          ? "🧾 Tracciamento: Azione disciplinare registrata"
+          : "🧾 Tracciamento: Disconnessione volontaria"
       ].join("\n");
       return sendWebhook(
         urls.voice,
@@ -93,22 +94,27 @@ export default function voiceHandler(client, urls) {
       );
     }
 
-    // MOVE
+    // MOVE (traslazione) — con tracciamento mod
     if (oldChannel && newChannel && oldChannel.id !== newChannel.id) {
+      const executor = await getExecutor(AuditLogEvent.MemberMove);
+      const forced = !!executor;
       const desc = [
-        "🔄 **Traslazione vocale registrata**",
+        forced ? "🔄 **Traslazione forzata rilevata**" : "🔄 **Traslazione vocale registrata**",
         "",
         `👤 Utente: <@${member.id}>`,
+        forced ? `👮 Moderatore: <@${executor.id}>` : "",
         `📍 Da: <#${oldChannel.id}>`,
         `➡️ A: <#${newChannel.id}>`,
         "",
         `🕒 Orario: ${now}`,
         "",
-        `🧾 Tracciamento: Spostamento tra canali vocali`
+        forced
+          ? "🧾 Tracciamento: Spostamento eseguito da moderatore"
+          : "🧾 Tracciamento: Spostamento manuale dell’utente"
       ].join("\n");
       return sendWebhook(
         urls.voice,
-        embedBase("<:vcjoin_alpha:1430238007587377245> VC MOVE", desc, 0x3498db)
+        embedBase("<:vcjoin_alpha:1430238007587377245> VC MOVE", desc, forced ? 0xffaa00 : 0x3498db)
       );
     }
 
@@ -145,7 +151,7 @@ export default function voiceHandler(client, urls) {
     }
 
     // ─────────────────────────────
-    // SELF AUDIO (DEAFEN)
+    // SELF AUDIO (DEAF / UNDEAF)
     if (!oldState.selfDeaf && newState.selfDeaf) {
       const desc = [
         "🔇 **Audio disattivato manualmente**",
@@ -177,7 +183,7 @@ export default function voiceHandler(client, urls) {
     }
 
     // ─────────────────────────────
-    // STREAM START / STOP (corretto)
+    // STREAM START / STOP ✅ (corretto)
     if (!oldState.streaming && newState.streaming) {
       const desc = [
         "📡 **Streaming avviato**",
@@ -189,7 +195,7 @@ export default function voiceHandler(client, urls) {
       ].join("\n");
       return sendWebhook(
         urls.voice,
-        embedBase("<:screensharevc_alpha:1430245124457107527> STREAM START", desc, 0x0074d9)
+        embedBase("<:screensharevc_alpha:1430245124457107527> STREAM START", desc, 0x00bcd4)
       );
     }
 
@@ -204,7 +210,7 @@ export default function voiceHandler(client, urls) {
       ].join("\n");
       return sendWebhook(
         urls.voice,
-        embedBase("<:screenshareendvc_alpha:1430244985466388630> STREAM END", desc, 0x555555)
+        embedBase("<:screenshareendvc_alpha:1430244985466388630> STREAM END", desc, 0x607d8b)
       );
     }
 
@@ -241,13 +247,13 @@ export default function voiceHandler(client, urls) {
     }
 
     // ─────────────────────────────
-    // SERVER MUTE / UNMUTE (azione staff)
+    // SERVER MUTE / UNMUTE
     if (!oldState.serverMute && newState.serverMute) {
       const executor = await getExecutor(AuditLogEvent.MemberUpdate);
       const desc = [
         "🚫 **Mute vocale forzato dallo staff**",
         "",
-        `👤 Utente coinvolto: <@${member.id}>`,
+        `👤 Utente: <@${member.id}>`,
         executor ? `👮 Moderatore: <@${executor.id}>` : "👮 Moderatore: Sconosciuto",
         `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
         "",
@@ -264,7 +270,7 @@ export default function voiceHandler(client, urls) {
       const desc = [
         "✅ **Mute vocale rimosso dallo staff**",
         "",
-        `👤 Utente coinvolto: <@${member.id}>`,
+        `👤 Utente: <@${member.id}>`,
         executor ? `👮 Moderatore: <@${executor.id}>` : "👮 Moderatore: Sconosciuto",
         `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
         "",
@@ -282,7 +288,7 @@ export default function voiceHandler(client, urls) {
       const desc = [
         "🔒 **Audio disattivato dallo staff**",
         "",
-        `👤 Utente coinvolto: <@${member.id}>`,
+        `👤 Utente: <@${member.id}>`,
         executor ? `👮 Moderatore: <@${executor.id}>` : "👮 Moderatore: Sconosciuto",
         `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
         "",
@@ -299,7 +305,7 @@ export default function voiceHandler(client, urls) {
       const desc = [
         "🔓 **Audio riattivato dallo staff**",
         "",
-        `👤 Utente coinvolto: <@${member.id}>`,
+        `👤 Utente: <@${member.id}>`,
         executor ? `👮 Moderatore: <@${executor.id}>` : "👮 Moderatore: Sconosciuto",
         `📍 Canale: <#${newChannel?.id || oldChannel?.id}>`,
         "",
