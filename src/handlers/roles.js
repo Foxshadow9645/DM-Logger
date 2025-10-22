@@ -180,4 +180,47 @@ export default function roleHandler(client, urls) {
 
     sendWebhook(urls.roles, embed);
   });
-}
+// ───────────────────────────────
+// 🟥 Rimozione ruoli su uscita/ban/kick
+client.on("guildMemberRemove", async (member) => {
+  if (member.guild.id !== TARGET_GUILD_ID) return;
+
+  const now = `<t:${Math.floor(Date.now() / 1000)}:F>`;
+  const roles = member.roles.cache.filter(r => r.id !== member.guild.id);
+  const guild = member.guild;
+
+  // Chi ha causato l'uscita?
+  let executor = null;
+  try {
+    const logs = await guild.fetchAuditLogs({ limit: 3 });
+    const entry = logs.entries.find(e =>
+      ["MEMBER_KICK", "MEMBER_BAN_ADD"].includes(e.actionType) &&
+      e.target?.id === member.id &&
+      Date.now() - e.createdTimestamp < 10000
+    );
+    executor = entry?.executor ?? null;
+  } catch {}
+
+  const desc = [
+    "🟥 **Rimozione ruoli su uscita utente**",
+    "",
+    `👤 **Utente:** <@${member.id}>`,
+    executor ? `👮 **Azione eseguita da:** <@${executor.id}>` : "👮 **Azione eseguita da:** *Uscita autonoma o non tracciata*",
+    "",
+    roles.size
+      ? `🧾 **Ruoli rimossi:** ${roles.map(r => `<@&${r.id}>`).join(", ")}`
+      : "🧾 **Ruoli rimossi:** Nessuno (utente privo di ruoli)",
+    "",
+    `🕒 **Orario:** ${now}`,
+    "",
+    "📡 **Tracciamento:** Evento registrato automaticamente"
+  ].join("\n");
+
+  const embed = logEmbed("🟥 ROLE REMOVED — MEMBER LEFT", desc, 0xe74c3c);
+  embed.username = "DM Alpha";
+  embed.avatar_url =
+    "https://media.istockphoto.com/id/690772190/it/vettoriale/concetto-di-occhio-elettronico-del-grande-fratello-tecnologie-per-la-sorveglianza-globale.jpg?s=612x612&w=0&k=20&c=mmFwIgeRe5ApHaVBHzF4HrfXmA-OwX3EXrgpFmkJqp0=";
+
+  sendWebhook(urls.roles, embed);
+});
+
