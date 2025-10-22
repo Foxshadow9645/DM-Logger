@@ -3,7 +3,7 @@ import { sendWebhook } from "../core/logger.js";
 import { AuditLogEvent } from "discord.js";
 
 const TARGET_GUILD_ID = "1413141460416598062";
-const LOGGER_ID = "1429110896910798928"; // ID del bot/logger
+const LOGGER_ID = "1429110896910798928"; // ID BOT / WEBHOOK DM Alpha
 const MAX_SNAPSHOTS = 5000;
 const MESSAGE_SNAPSHOT = new Map();
 
@@ -26,36 +26,38 @@ export default function messageHandler(client, urls) {
     saveSnapshot(m);
   });
 
-  // ─────────────────────────────────────────────
+  // ───────────────────────────────
   // 🗑️ MESSAGE DELETE
   client.on("messageDelete", async (message) => {
     if (!message.guild || message.guild.id !== TARGET_GUILD_ID) return;
 
-    // se partial, fetch
-    try { if (message?.partial) await message.fetch(); } catch {}
+    try {
+      if (message.partial) await message.fetch();
+    } catch {}
 
-    const authorId = message.author?.id ?? MESSAGE_SNAPSHOT.get(message.id)?.authorId;
-    const content = message.content ?? MESSAGE_SNAPSHOT.get(message.id)?.content ?? "*[Contenuto non disponibile]*";
-    const channelId = message.channel?.id ?? MESSAGE_SNAPSHOT.get(message.id)?.channelId;
+    const snapshot = MESSAGE_SNAPSHOT.get(message.id);
+    const content = message.content ?? snapshot?.content ?? "*[Contenuto non disponibile]*";
+    const channelId = message.channel?.id ?? snapshot?.channelId;
+    const authorId = message.author?.id ?? snapshot?.authorId;
     const now = `<t:${Math.floor(Date.now() / 1000)}:F>`;
 
-    // Rileva chi ha cancellato dal log
+    // Audit Log → chi ha cancellato il messaggio
     let executor = null;
     try {
       const logs = await message.guild.fetchAuditLogs({ type: AuditLogEvent.MessageDelete, limit: 5 });
       const entry = logs.entries.find(
-        e =>
-          e.target?.id === authorId ||
-          (message.webhookId && e.extra?.channel?.id === channelId)
+        (e) =>
+          e.extra?.channel?.id === channelId &&
+          Date.now() - e.createdTimestamp < 10000
       );
-      if (entry && Date.now() - entry.createdTimestamp < 10000) executor = entry.executor;
+      executor = entry?.executor ?? null;
     } catch (err) {
       console.error("Errore AuditLog:", err.message);
     }
 
-    const isLogMessage = authorId === LOGGER_ID || !!message.webhookId;
+    // 🔐 Verifica se il messaggio era del webhook / bot
+    const isLogMessage = message.webhookId || authorId === LOGGER_ID;
 
-    // Caso 1: 🔒 Tentativo di cancellare un log
     if (isLogMessage) {
       const desc = [
         "🚨 **Tentativo di manomissione log rilevato**",
@@ -67,27 +69,29 @@ export default function messageHandler(client, urls) {
         `📍 **Canale:** <#${channelId}>`,
         `🕒 **Orario:** ${now}`,
         "",
-        `🧾 **Contenuto del log cancellato:**`,
-        content ? `> ${content.slice(0, 1000)}` : "*[Nessun contenuto registrato]*",
+        "🧾 **Contenuto log rimosso:**",
+        content ? `> ${content.slice(0, 1000)}` : "*[Non disponibile]*",
         "",
-        "⚠️ **Tracciamento:** Intervento registrato come violazione del sistema di sorveglianza."
+        "⚠️ **Tracciamento:** Rimozione non autorizzata di un log ufficiale DM REALM ALPHA"
       ].join("\n");
 
       const embed = logEmbed("🔒 SECURITY BREACH — LOG DELETION", desc, 0xff0000);
       embed.username = "DM Alpha — SECURITY NODE";
       embed.avatar_url =
         "https://media.istockphoto.com/id/690772190/it/vettoriale/concetto-di-occhio-elettronico-del-grande-fratello-tecnologie-per-la-sorveglianza-globale.jpg?s=612x612&w=0&k=20&c=mmFwIgeRe5ApHaVBHzF4HrfXmA-OwX3EXrgpFmkJqp0=";
+
       return sendWebhook(urls.punish || urls.messages, embed);
     }
 
-    // Caso 2: messaggio normale cancellato
+    // ───────────────────────────────
+    // Messaggio normale eliminato
     const isModerator = executor && executor.id !== authorId;
     const desc = [
       isModerator ? "🚨 **Messaggio eliminato da moderatore**" : "🗑️ **Messaggio eliminato dall’autore**",
       "",
       authorId ? `💬 **Autore originale:** <@${authorId}>` : "💬 **Autore originale:** *Sconosciuto*",
       isModerator ? `👮 **Moderatore:** <@${executor.id}>` : "",
-      channelId ? `📍 **Canale:** <#${channelId}>` : "",
+      `📍 **Canale:** <#${channelId}>`,
       "",
       `🕒 **Orario:** ${now}`,
       "",
@@ -109,7 +113,7 @@ export default function messageHandler(client, urls) {
     sendWebhook(urls.messages, embed);
   });
 
-  // ─────────────────────────────────────────────
+  // ───────────────────────────────
   // ✏️ MESSAGE UPDATE
   client.on("messageUpdate", async (oldMsg, newMsg) => {
     if (!newMsg.guild || newMsg.guild.id !== TARGET_GUILD_ID) return;
