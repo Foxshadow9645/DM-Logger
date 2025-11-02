@@ -10,10 +10,10 @@ dotenv.config();
 // ─────────────────────────────────────────────
 // 🔧 CONFIG
 // ─────────────────────────────────────────────
-const { DISCORD_TOKEN, CLIENT_ID } = process.env;
+const { DISCORD_TOKEN, CLIENT_ID, GUILD_ID } = process.env;
 
-if (!DISCORD_TOKEN || !CLIENT_ID) {
-  console.error("❌ Errore: manca DISCORD_TOKEN o CLIENT_ID nel file .env");
+if (!DISCORD_TOKEN || !CLIENT_ID || !GUILD_ID) {
+  console.error("❌ Errore: manca DISCORD_TOKEN, CLIENT_ID o GUILD_ID nel file .env");
   process.exit(1);
 }
 
@@ -38,7 +38,7 @@ for (const folder of commandFolders) {
         description: command.description,
         options: command.options || []
       });
-      console.log(`✅ Caricato comando: ${folder}/${command.name}`);
+      console.log(`✅ Comando caricato: ${folder}/${command.name}`);
     } else {
       console.warn(`⚠️  Comando non valido o incompleto: ${file}`);
     }
@@ -46,15 +46,23 @@ for (const folder of commandFolders) {
 }
 
 // ─────────────────────────────────────────────
-// 🚀 REGISTRAZIONE COMANDI GLOBALI
+// 🚀 REGISTRAZIONE COMANDI
 // ─────────────────────────────────────────────
 const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
 
 try {
-  console.log("🌍 Inizio registrazione comandi globali...");
+  console.log("🌍 Inizio registrazione comandi GLOBALI + GUILD...");
+
+  // 1️⃣ Globali (propagano ovunque)
   await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
   console.log(`✅ ${commands.length} comandi globali registrati con successo!`);
-  console.log("⚠️ Potrebbero impiegare fino a 1 ora per apparire globalmente.");
+  console.log("⚠️ I comandi globali impiegheranno fino a 1 ora per propagarsi.");
+
+  // 2️⃣ Guild (immediati nel server DM Realm Alpha)
+  await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+  console.log(`⚡ Comandi registrati istantaneamente nella guild ${GUILD_ID}`);
+
+  console.log("✅ Deploy completato con successo!");
 } catch (error) {
   console.error("❌ Errore durante il deploy dei comandi:", error);
 }
