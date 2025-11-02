@@ -35,7 +35,7 @@ import inviteHandler from "./handlers/invites.js";
 import ticketSystem from "./systems/ticketSystem.js";
 import aiListener from "./systems/aiListener.js";
 import autoSecurity from "./systems/autoSecurity.js";
-import roleDeploySystem from "./systems/roleDeploy.js";
+
 
 // ─────────────────────────────────────────────
 // ⚙️ CONFIG WEBHOOKS
@@ -156,7 +156,7 @@ inviteHandler(client, WEBHOOKS);
 ticketSystem(client);
 aiListener(client);
 autoSecurity(client);
-roleDeploySystem(client);
+
 
 import "./ai/api.js";
 
