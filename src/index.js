@@ -1,12 +1,27 @@
+// ─────────────────────────────────────────────
+// 📦 IMPORTAZIONI PRINCIPALI
+// ─────────────────────────────────────────────
 import dotenv from "dotenv";
 dotenv.config();
 
 import {
   Client,
   GatewayIntentBits,
-  Partials
+  Partials,
+  Collection
 } from "discord.js";
+import fs from "fs";
+import path from "path";
 
+// ─────────────────────────────────────────────
+// 🔧 CORE E DATABASE
+// ─────────────────────────────────────────────
+import { connectDatabase } from "./core/database.js";
+import { testAILocal } from "./ai/setup-ai.js";
+
+// ─────────────────────────────────────────────
+// ⚙️ HANDLERS LOGGER CLASSICI
+// ─────────────────────────────────────────────
 import memberHandler from "./handlers/members.js";
 import messageHandler from "./handlers/messages.js";
 import moderationHandler from "./handlers/moderation.js";
@@ -14,20 +29,16 @@ import roleHandler from "./handlers/roles.js";
 import voiceHandler from "./handlers/voice.js";
 import inviteHandler from "./handlers/invites.js";
 
-const TARGET_GUILD_ID = "1413141460416598062";
+// ─────────────────────────────────────────────
+// 🧠 SISTEMI AVANZATI
+// ─────────────────────────────────────────────
+import ticketSystem from "./systems/ticketSystem.js";
+import aiListener from "./systems/aiListener.js";
+import autoSecurity from "./systems/autoSecurity.js";
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildBans,
-    GatewayIntentBits.GuildVoiceStates
-  ],
-  partials: [Partials.Channel, Partials.Message, Partials.GuildMember, Partials.Reaction]
-});
-
+// ─────────────────────────────────────────────
+// ⚙️ CONFIG WEBHOOKS
+// ─────────────────────────────────────────────
 const WEBHOOKS = {
   join: process.env.WEBHOOK_JOIN,
   leave: process.env.WEBHOOK_LEAVE,
@@ -38,37 +49,97 @@ const WEBHOOKS = {
   invites: process.env.WEBHOOK_INVITES
 };
 
-// 🟢 Avvio
-client.once("ready", async () => {
-  console.log(`✅ DM REALM ALPHA LOGGER attivo come ${client.user.tag}`);
-  console.log(`🛰️ I log vengono registrati solo per il server: ${TARGET_GUILD_ID}`);
+// ─────────────────────────────────────────────
+// 🧠 CREAZIONE CLIENT
+// ─────────────────────────────────────────────
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildBans
+  ],
+  partials: [
+    Partials.Channel,
+    Partials.Message,
+    Partials.GuildMember,
+    Partials.Reaction,
+    Partials.User
+  ]
 });
 
-// 🧩 Wrapper per i log handler con filtro guild
-function withGuildFilter(handler) {
-  return (client, urls) => {
-    handler(
-      {
-        ...client,
-        on: (event, listener) =>
-          client.on(event, (...args) => {
-            const ctx = args[0]?.guild || args[0]?.member?.guild || args[1]?.guild;
-            if (ctx && ctx.id === TARGET_GUILD_ID) {
-              listener(...args);
-            }
-          })
-      },
-      urls
-    );
-  };
+// ─────────────────────────────────────────────
+// 🗂️ CARICAMENTO COMANDI DINAMICO
+// ─────────────────────────────────────────────
+client.commands = new Collection();
+const commandsPath = path.resolve("src/commands");
+const folders = fs.readdirSync(commandsPath);
+
+for (const folder of folders) {
+  const files = fs.readdirSync(`${commandsPath}/${folder}`).filter(f => f.endsWith(".js"));
+  for (const file of files) {
+    const command = (await import(`./commands/${folder}/${file}`)).default;
+    client.commands.set(command.name, command);
+  }
 }
 
-// ✅ Handlers con filtro guild
-withGuildFilter(memberHandler)(client, WEBHOOKS);
-withGuildFilter(messageHandler)(client, WEBHOOKS);
-withGuildFilter(moderationHandler)(client, WEBHOOKS);
-withGuildFilter(roleHandler)(client, WEBHOOKS);
-withGuildFilter(voiceHandler)(client, WEBHOOKS);
-withGuildFilter(inviteHandler)(client, WEBHOOKS);
+// ─────────────────────────────────────────────
+// 🔗 CONNESSIONE DATABASE + AI
+// ─────────────────────────────────────────────
+await connectDatabase();
+await testAILocal();
 
+// ─────────────────────────────────────────────
+// 🚀 AVVIO BOT
+// ─────────────────────────────────────────────
+client.once("ready", () => {
+  console.log("🚀───────────────────────────────");
+  console.log(`✅ DM REALM ALPHA LOGGER attivo come ${client.user.tag}`);
+  console.log("🧩 Moduli caricati: Members, Messages, Roles, Voice, Invites");
+  console.log("🎟️ Ticket System + AI Listener + Sicurezza attivi");
+  console.log("📡 Database MongoDB e AI connessi");
+  console.log("🚀───────────────────────────────");
+});
+
+// ─────────────────────────────────────────────
+// 🎯 GESTIONE COMANDI
+// ─────────────────────────────────────────────
+client.on("interactionCreate", async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+  const command = client.commands.get(interaction.commandName);
+  if (!command) return;
+
+  try {
+    await command.execute(interaction);
+  } catch (err) {
+    console.error(err);
+    await interaction.reply({
+      content: "❌ Errore durante l’esecuzione del comando.",
+      ephemeral: true
+    });
+  }
+});
+
+// ─────────────────────────────────────────────
+// 📡 HANDLERS CLASSICI LOGGER
+// ─────────────────────────────────────────────
+memberHandler(client, WEBHOOKS);
+messageHandler(client, WEBHOOKS);
+moderationHandler(client, WEBHOOKS);
+roleHandler(client, WEBHOOKS);
+voiceHandler(client, WEBHOOKS);
+inviteHandler(client, WEBHOOKS);
+
+// ─────────────────────────────────────────────
+// 🧠 SISTEMI INTELLIGENTI
+// ─────────────────────────────────────────────
+ticketSystem(client);
+aiListener(client);
+autoSecurity(client);
+
+// ─────────────────────────────────────────────
+// 🔐 LOGIN
+// ─────────────────────────────────────────────
 client.login(process.env.DISCORD_TOKEN);
