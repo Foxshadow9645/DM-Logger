@@ -108,9 +108,9 @@ await connectDatabase();
 await testAILocal();
 
 // ─────────────────────────────────────────────
-// 🚀 AVVIO BOT
+// 🚀 AVVIO BOT (nuovo evento clientReady)
 // ─────────────────────────────────────────────
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log("🚀───────────────────────────────");
   console.log(`✅ DM REALM ALPHA LOGGER attivo come ${client.user.tag}`);
   console.log("🧩 Moduli caricati: Members, Messages, Roles, Voice, Invites");
@@ -131,10 +131,11 @@ client.on("interactionCreate", async interaction => {
     await command.execute(interaction);
   } catch (err) {
     console.error(err);
-    await interaction.reply({
-      content: "❌ Errore durante l’esecuzione del comando.",
-      ephemeral: true
-    });
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp({ content: "❌ Errore durante l’esecuzione del comando.", ephemeral: true });
+    } else {
+      await interaction.reply({ content: "❌ Errore durante l’esecuzione del comando.", ephemeral: true });
+    }
   }
 });
 
