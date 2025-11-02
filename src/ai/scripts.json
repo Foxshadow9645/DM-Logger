@@ -1,1 +1,19 @@
+{
+  "permessi": {
+    "keywords": ["permesso", "accesso", "vc", "entra", "canale"],
+    "reply": "⚙️ Controlla i tuoi ruoli. Se non hai i permessi corretti, contatta un **Administrator**."
+  },
+  "ban": {
+    "keywords": ["ban", "bannato", "espulso", "kick"],
+    "reply": "🪖 Se ritieni di essere stato punito ingiustamente, apri un ticket in **#ricorsi-staff** per revisione."
+  },
+  "abuso": {
+    "keywords": ["abuso", "mod", "ingiustamente", "mutato"],
+    "reply": "🚨 Ho inoltrato la segnalazione al **Dipartimento Sicurezza**. Un membro dell'Alto Staff controllerà la situazione."
+  },
+  "aiuto": {
+    "keywords": ["help", "come", "non so", "problema", "errore"],
+    "reply": "📘 Posso aiutarti a risolvere problemi comuni o segnalare la tua richiesta allo staff. Descrivi la situazione in dettaglio."
+  }
+}
 
