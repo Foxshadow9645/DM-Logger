@@ -71,17 +71,33 @@ const client = new Client({
 });
 
 // ─────────────────────────────────────────────
-// 🗂️ CARICAMENTO COMANDI DINAMICO
+// 🗂️ CARICAMENTO COMANDI DINAMICO (SAFE)
 // ─────────────────────────────────────────────
 client.commands = new Collection();
 const commandsPath = path.resolve("src/commands");
 const folders = fs.readdirSync(commandsPath);
 
 for (const folder of folders) {
-  const files = fs.readdirSync(`${commandsPath}/${folder}`).filter(f => f.endsWith(".js"));
+  const files = fs
+    .readdirSync(`${commandsPath}/${folder}`)
+    .filter(f => f.endsWith(".js"));
+
   for (const file of files) {
-    const command = (await import(`./commands/${folder}/${file}`)).default;
-    client.commands.set(command.name, command);
+    try {
+      const modulePath = `./commands/${folder}/${file}`;
+      const imported = await import(modulePath);
+      const command = imported?.default;
+
+      if (!command || !command.name || !command.execute) {
+        console.warn(`⚠️  Comando non valido o incompleto: ${file}`);
+        continue;
+      }
+
+      client.commands.set(command.name, command);
+      console.log(`✅ Comando caricato: ${folder}/${command.name}`);
+    } catch (err) {
+      console.error(`❌ Errore nel comando ${folder}/${file}:`, err.message);
+    }
   }
 }
 
