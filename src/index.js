@@ -36,19 +36,74 @@ import ticketSystem from "./systems/ticketSystem.js";
 import aiListener from "./systems/aiListener.js";
 import autoSecurity from "./systems/autoSecurity.js";
 
+// ─────────────────────────────────────────────
+// 🧠 AUTO DEPLOY COMANDI
+// ─────────────────────────────────────────────
+import { REST, Routes } from "discord.js";
 
-// ─────────────────────────────────────────────
-// ⚙️ CONFIG WEBHOOKS
-// ─────────────────────────────────────────────
-const WEBHOOKS = {
-  join: process.env.WEBHOOK_JOIN,
-  leave: process.env.WEBHOOK_LEAVE,
-  messages: process.env.WEBHOOK_MESSAGES,
-  voice: process.env.WEBHOOK_VOICE,
-  punish: process.env.WEBHOOK_PUNISH,
-  roles: process.env.WEBHOOK_ROLES,
-  invites: process.env.WEBHOOK_INVITES
-};
+async function autoDeployCommands(client) {
+  const { DISCORD_TOKEN, CLIENT_ID, GUILD_ID } = process.env;
+  if (!DISCORD_TOKEN || !CLIENT_ID || !GUILD_ID) {
+    console.warn("⚠️ [AUTO-DEPLOY] Variabili mancanti: DISCORD_TOKEN o CLIENT_ID o GUILD_ID");
+    return;
+  }
+
+  const commands = [];
+  const foldersPath = path.resolve("src/commands");
+  const commandFolders = fs.readdirSync(foldersPath);
+
+  for (const folder of commandFolders) {
+    const commandsPath = path.join(foldersPath, folder);
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
+
+    for (const file of commandFiles) {
+      try {
+        const filePath = path.join(commandsPath, file);
+        const command = (await import(filePath)).default;
+        if (command?.name && command?.description) {
+          commands.push({
+            name: command.name,
+            description: command.description,
+            options: command.options || []
+          });
+        } else {
+          console.warn(`⚠️ [AUTO-DEPLOY] Comando non valido: ${folder}/${file}`);
+        }
+      } catch (err) {
+        console.error(`❌ [AUTO-DEPLOY] Errore importando comando ${folder}/${file}:`, err);
+      }
+    }
+  }
+
+  const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
+
+  try {
+    console.log("🌍 [AUTO-DEPLOY] Registrazione comandi globali...");
+    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
+    console.log(`✅ [AUTO-DEPLOY] ${commands.length} comandi globali registrati.`);
+
+    console.log("⚡ [AUTO-DEPLOY] Registrazione comandi nella guild...");
+    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+    console.log(`✅ [AUTO-DEPLOY] Comandi resi disponibili immediatamente nella guild ${GUILD_ID}.`);
+
+    console.log("🧩 [AUTO-DEPLOY] Sincronizzazione comandi completata.");
+  } catch (error) {
+    console.error("❌ [AUTO-DEPLOY] Errore durante la sincronizzazione dei comandi:", error);
+  }
+}
+
+// Funzione check comandi caricati
+async function checkCommandsLoaded(client) {
+  const { CLIENT_ID } = process.env;
+  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+  try {
+    const data = await rest.get(Routes.applicationCommands(CLIENT_ID));
+    console.log(`🔍 [CHECK] ${data.length} comandi globali attivi.`);
+    // Puoi aggiungere ulteriori logiche, es: confrontare lista file comandi con data.length
+  } catch (error) {
+    console.error("❌ [CHECK] Impossibile ottenere i comandi globali:", error);
+  }
+}
 
 // ─────────────────────────────────────────────
 // 🧠 CREAZIONE CLIENT
@@ -90,12 +145,12 @@ for (const folder of folders) {
       const command = imported?.default;
 
       if (!command || !command.name || !command.execute) {
-        console.warn(`⚠️  Comando non valido o incompleto: ${file}`);
+        console.warn(`⚠️ Comando non valido o incompleto: ${file}`);
         continue;
       }
 
       client.commands.set(command.name, command);
-      console.log(`✅ Comando caricato: ${folder}/${command.name}`);
+      console.log(`✅ Comando caricato localmente: ${folder}/${command.name}`);
     } catch (err) {
       console.error(`❌ Errore nel comando ${folder}/${file}:`, err.message);
     }
@@ -109,15 +164,21 @@ await connectDatabase();
 await testAILocal();
 
 // ─────────────────────────────────────────────
-// 🚀 AVVIO BOT (nuovo evento clientReady)
+// 🚀 AVVIO BOT
 // ─────────────────────────────────────────────
-client.once("clientReady", () => {
+client.once("ready", async () => {
   console.log("🚀───────────────────────────────");
   console.log(`✅ DM REALM ALPHA LOGGER attivo come ${client.user.tag}`);
   console.log("🧩 Moduli caricati: Members, Messages, Roles, Voice, Invites");
   console.log("🎟️ Ticket System + AI Listener + Sicurezza attivi");
   console.log("📡 Database MongoDB e AI connessi");
   console.log("🚀───────────────────────────────");
+
+  // Esegui l’auto-deploy dei comandi
+  await autoDeployCommands(client);
+
+  // Esegui il check
+  await checkCommandsLoaded(client);
 });
 
 // ─────────────────────────────────────────────
@@ -125,8 +186,12 @@ client.once("clientReady", () => {
 // ─────────────────────────────────────────────
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
+
   const command = client.commands.get(interaction.commandName);
-  if (!command) return;
+  if (!command) {
+    console.error(`❌ Nessun comando corrispondente trovato per: ${interaction.commandName}`);
+    return;
+  }
 
   try {
     await command.execute(interaction);
@@ -143,12 +208,12 @@ client.on("interactionCreate", async interaction => {
 // ─────────────────────────────────────────────
 // 📡 HANDLERS CLASSICI LOGGER
 // ─────────────────────────────────────────────
-memberHandler(client, WEBHOOKS);
-messageHandler(client, WEBHOOKS);
-moderationHandler(client, WEBHOOKS);
-roleHandler(client, WEBHOOKS);
-voiceHandler(client, WEBHOOKS);
-inviteHandler(client, WEBHOOKS);
+memberHandler(client, process.env, WEBHOOKS);
+messageHandler(client, process.env, WEBHOOKS);
+moderationHandler(client, process.env, WEBHOOKS);
+roleHandler(client, process.env, WEBHOOKS);
+voiceHandler(client, process.env, WEBHOOKS);
+inviteHandler(client, process.env, WEBHOOKS);
 
 // ─────────────────────────────────────────────
 // 🧠 SISTEMI INTELLIGENTI
@@ -156,7 +221,6 @@ inviteHandler(client, WEBHOOKS);
 ticketSystem(client);
 aiListener(client);
 autoSecurity(client);
-
 
 import "./ai/api.js";
 
