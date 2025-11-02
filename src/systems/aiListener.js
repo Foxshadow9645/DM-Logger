@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// 🧠 AI LISTENER — Supporto Naturale + Ticket System
+// 🧠 AI LISTENER — Customer Service / Ticket Manager
 // ─────────────────────────────────────────────
 import {
   EmbedBuilder,
@@ -17,7 +17,7 @@ export default function aiListener(client) {
     const user = message.author;
 
     // ─────────────────────────────────────────────
-    // 🗣️ SALUTO BASE + SCELTA MODALITÀ
+    // 💬 SALUTO BASE - Customer Service Style
     // ─────────────────────────────────────────────
     if (
       content.startsWith("ciao") ||
@@ -28,11 +28,11 @@ export default function aiListener(client) {
     ) {
       const embed = new EmbedBuilder()
         .setColor(0x1f2937)
-        .setAuthor({ name: "DM Alpha — Servizio di Supporto" })
+        .setAuthor({ name: "DM Alpha — Customer Service" })
         .setDescription(
-          `Ciao ${user}, sono **DM Alpha**, l'assistente ufficiale del server.\n\n` +
-            "👉 Se vuoi parlare con un operatore scrivi **voglio parlare con uno staffer**.\n" +
-            "⚙️ Oppure scrivi **provo a risolvere io** per segnalare il problema e ottenere un aiuto automatico."
+          `Salve ${user}, sono **DM Alpha**, il servizio di assistenza ufficiale del server.\n\n` +
+            "👉 Se desideri parlare con un operatore umano, scrivi **voglio parlare con uno staffer**.\n" +
+            "⚙️ Oppure scrivi **provo a risolvere io** per avviare una segnalazione automatica."
         )
         .setFooter({ text: "Nihil Difficile Volenti • Sistema Attivo" })
         .setTimestamp();
@@ -41,16 +41,19 @@ export default function aiListener(client) {
     }
 
     // ─────────────────────────────────────────────
-    // 🎟️ APERTURA TICKET CON OPERATORE
+    // 🎟️ CREA NUOVO TICKET + CHIUDI IL CORRENTE
     // ─────────────────────────────────────────────
     if (content.includes("voglio parlare con uno staffer")) {
-      const channel = await message.guild.channels.create({
+      const guild = message.guild;
+
+      // ✅ Crea il nuovo ticket privato
+      const newTicket = await guild.channels.create({
         name: `ticket-${user.username}`,
         type: 0, // GUILD_TEXT
-        topic: `Ticket aperto da ${user.tag}`,
+        topic: `Richiesta assistenza aperta da ${user.tag}`,
         permissionOverwrites: [
           {
-            id: message.guild.roles.everyone,
+            id: guild.roles.everyone,
             deny: ["ViewChannel"]
           },
           {
@@ -60,7 +63,7 @@ export default function aiListener(client) {
         ]
       });
 
-      const row = new ActionRowBuilder().addComponents(
+      const closeRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("close_ticket")
           .setLabel("Chiudi Ticket")
@@ -68,33 +71,50 @@ export default function aiListener(client) {
           .setEmoji("🔒")
       );
 
-      const embed = new EmbedBuilder()
+      // 🪖 Messaggio di benvenuto nel nuovo ticket
+      const welcomeEmbed = new EmbedBuilder()
         .setColor(0x2563eb)
-        .setTitle("🎟️ Ticket Operatore Aperto")
+        .setTitle("🎟️ Benvenuto nel Customer Service DM Alpha")
         .setDescription(
-          `Benvenuto ${user}, un membro dello staff ti assisterà a breve.\n\n` +
-            "Puoi chiudere questo ticket in qualsiasi momento cliccando il pulsante qui sotto o scrivendo **chiudi il ticket**."
+          `Salve ${user}, un membro dello **Staff Operativo** la assisterà a breve.\n\n` +
+            "Può descrivere la sua richiesta o problema qui sotto. " +
+            "Quando la conversazione sarà conclusa, può chiudere il ticket cliccando il pulsante o scrivendo **chiudi il ticket**."
         )
         .setFooter({ text: "DM Alpha — Support Desk" })
         .setTimestamp();
 
-      await channel.send({ embeds: [embed], components: [row] });
-      return message.reply({
-        content: `✅ Ticket creato con successo: ${channel}`,
-        ephemeral: true
+      await newTicket.send({ embeds: [welcomeEmbed], components: [closeRow] });
+
+      // Risposta nel ticket originale
+      await message.reply({
+        content: `✅ Ho creato un canale dedicato per la tua assistenza: ${newTicket}`,
       });
+
+      // 🔒 Chiudi il ticket precedente (dove è stato scritto “voglio parlare con uno staffer”)
+      if (message.channel.name.startsWith("ticket-")) {
+        const closingEmbed = new EmbedBuilder()
+          .setColor(0x9ca3af)
+          .setTitle("🔒 Ticket Trasferito")
+          .setDescription(
+            `La conversazione è stata trasferita su ${newTicket}.\nQuesto ticket verrà chiuso automaticamente.`
+          )
+          .setTimestamp();
+
+        await message.channel.send({ embeds: [closingEmbed] });
+        setTimeout(() => message.channel.delete().catch(() => {}), 5000);
+      }
     }
 
     // ─────────────────────────────────────────────
-    // ⚙️ SUPPORTO AUTOMATICO ("Provo a risolvere io")
+    // ⚙️ SUPPORTO AUTOMATICO
     // ─────────────────────────────────────────────
     if (content.includes("provo a risolvere io")) {
       const embed = new EmbedBuilder()
-        .setColor(0x1f2937)
+        .setColor(0x374151)
         .setAuthor({ name: "DM Alpha — AutoSupport" })
         .setDescription(
-          `Perfetto ${user}, descrivi qui sotto il problema in modo dettagliato.\n\n` +
-            "📘 Il sistema cercherà di aiutarti automaticamente oppure invierà la segnalazione al Dipartimento Staff."
+          `Va bene ${user}, descriva il problema in modo dettagliato qui sotto.\n\n` +
+            "📘 Il sistema cercherà di identificare la causa del problema o di inoltrare la segnalazione al **Dipartimento Tecnico**."
         )
         .setFooter({ text: "Sistema di Assistenza Automatica Attivo" })
         .setTimestamp();
@@ -103,7 +123,7 @@ export default function aiListener(client) {
     }
 
     // ─────────────────────────────────────────────
-    // 🔒 CHIUSURA AUTOMATICA TICKET SU RICHIESTA
+    // 🔒 CHIUSURA AUTOMATICA SU RICHIESTA
     // ─────────────────────────────────────────────
     const closeTriggers = [
       "chiudi il ticket",
@@ -127,15 +147,15 @@ export default function aiListener(client) {
     }
 
     // ─────────────────────────────────────────────
-    // 🚨 LINGUAGGIO INAPPROPRIATO (Controllo Moderato)
+    // 🚨 LINGUAGGIO INAPPROPRIATO
     // ─────────────────────────────────────────────
     if (content.includes("gay") || content.includes("frocio") || content.includes("insulto")) {
       const embed = new EmbedBuilder()
         .setColor(0xe11d48)
         .setTitle("⚠️ Linguaggio Inappropriato")
         .setDescription(
-          `Il tuo messaggio è stato segnalato al **Dipartimento Sicurezza** per revisione.\n\n` +
-            "Ricorda che il rispetto è una condizione fondamentale del server."
+          `Il messaggio è stato segnalato al **Dipartimento Sicurezza**.\n` +
+            "Le ricordiamo che l'uso di linguaggio offensivo non è tollerato nel server."
         )
         .setFooter({ text: "Sistema di Sorveglianza Attivo" })
         .setTimestamp();
@@ -145,7 +165,7 @@ export default function aiListener(client) {
   });
 
   // ─────────────────────────────────────────────
-  // 🔘 CHIUSURA TICKET CON PULSANTE
+  // 🔘 CHIUSURA MANUALE CON PULSANTE
   // ─────────────────────────────────────────────
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isButton()) return;
