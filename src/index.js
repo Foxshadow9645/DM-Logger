@@ -209,6 +209,7 @@ inviteHandler(client, WEBHOOKS);
 // 🧠 SISTEMI INTELLIGENTI
 // ─────────────────────────────────────────────
 ticketSystem(client);
+staffClaim(client);
 aiListener(client);
 autoSecurity(client);
 
