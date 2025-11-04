@@ -38,7 +38,6 @@ import ticketSystem from "./systems/ticketSystem.js";
 import staffClaim from "./systems/staffClaim.js";
 import ticketAddUser from "./systems/ticketAddUser.js";
 import ticketClose from "./systems/ticketClose.js";
-import staffClaim from "./systems/staffClaim.js";
 import aiListener from "./systems/aiListener.js";
 import autoSecurity from "./systems/autoSecurity.js";
 import commandChecker from "./systems/commandChecker.js";
@@ -217,7 +216,7 @@ aiListener(client);
 autoSecurity(client);
 ticketAddUser(client);
 ticketClose(client);
-staffClaim(client);
+
 
 // ─────────────────────────────────────────────
 // 🌐 AVVIO API LOCALE (AI)
