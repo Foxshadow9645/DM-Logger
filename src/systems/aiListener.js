@@ -1,108 +1,107 @@
 // ─────────────────────────────────────────────
-// 🧠 AI LISTENER — Customer Service / Ticket Manager
+// 🧠 AI LISTENER — Customer Service & Ticket Manager
 // ─────────────────────────────────────────────
+
 import {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  PermissionFlagsBits,
+  ChannelType
 } from "discord.js";
+import Ticket from "../core/models/Ticket.js";
+
+const STAFF_ROLE = "1429034173741400125"; // 🔥 RUOLO DA TAGGARE QUANDO CHIESTO STAFF
+const STAFF_CLAIM_ROLES = [
+  "1429034166229663826","1429034167781294080","1429034175171792988",
+  "1429034176014843944","1429034177000509451","1429034177898086491",
+  "1429034178766180444","1429034179747778560","1431283077824512112"
+];
 
 export default function aiListener(client) {
+
+  // ─────────────────────────────────────────────
+  // 💬 Risposta di benvenuto “Customer Service”
+  // ─────────────────────────────────────────────
   client.on("messageCreate", async (message) => {
-    if (message.author.bot) return;
-    if (!message.guild) return;
+    if (message.author.bot || !message.guild) return;
 
     const content = message.content.toLowerCase();
+    const channel = message.channel;
     const user = message.author;
 
-    // ─────────────────────────────────────────────
-    // 💬 SALUTO BASE - Customer Service Style
-    // ─────────────────────────────────────────────
-    if (
-      content.startsWith("ciao") ||
-      content.startsWith("salve") ||
-      content.startsWith("hey") ||
-      content.startsWith("buonasera") ||
-      content.startsWith("buongiorno")
-    ) {
+    // Considera *solo* i ticket
+    if (!channel.name.startsWith("ticket-")) return;
+
+    // Se nel ticket è già presente uno staff → il bot STA ZITTO
+    if (channel.permissionOverwrites.cache.some(overwrite =>
+      STAFF_CLAIM_ROLES.some(r => overwrite.id === r)
+    )) return;
+
+    // Saluti
+    if (["ciao", "salve", "hey", "buonasera", "buongiorno"].some(s => content.startsWith(s))) {
+
       const embed = new EmbedBuilder()
         .setColor(0x1f2937)
-        .setAuthor({ name: "DM Alpha — Customer Service" })
+        .setAuthor({ name: "DM Alpha — Servizio Assistenza" })
         .setDescription(
-          `Salve ${user}, sono **DM Alpha**, il servizio di assistenza ufficiale del server.\n\n` +
-            "👉 Se desideri parlare con un operatore umano, scrivi **voglio parlare con uno staffer**.\n" +
-            "⚙️ Oppure scrivi **provo a risolvere io** per avviare una segnalazione automatica."
+          `Salve ${user}.\n\n` +
+          `💼 Sono **DM Alpha**, assistente operativo.\n` +
+          `Vuoi che **un membro dello staff intervenga?**\n\n` +
+          `➡️ Scrivi **voglio parlare con uno staffer**\n` +
+          `⚙️ Oppure scrivi **provo a risolvere io** per diagnosi guidata.`
         )
-        .setFooter({ text: "Nihil Difficile Volenti • Sistema Attivo" })
+        .setFooter({ text: "Nihil Difficile Volenti" })
         .setTimestamp();
 
       return message.reply({ embeds: [embed] });
     }
 
     // ─────────────────────────────────────────────
-    // 🎟️ CREA NUOVO TICKET + CHIUDI IL CORRENTE
+    // 🎟️ PASSA CONVERSAZIONE A STAFF (Crea nuovo ticket staff e chiudi il vecchio)
     // ─────────────────────────────────────────────
     if (content.includes("voglio parlare con uno staffer")) {
+
       const guild = message.guild;
 
-      // ✅ Crea il nuovo ticket privato
-      const newTicket = await guild.channels.create({
-        name: `ticket-${user.username}`,
-        type: 0, // GUILD_TEXT
-        topic: `Richiesta assistenza aperta da ${user.tag}`,
+      // ✅ Crea ticket staff
+      const staffTicket = await guild.channels.create({
+        name: `staff-${user.username}`,
+        type: ChannelType.GuildText,
+        topic: `Assistenza diretta richiesta da ${user.tag}`,
         permissionOverwrites: [
-          {
-            id: guild.roles.everyone,
-            deny: ["ViewChannel"]
-          },
-          {
-            id: user.id,
-            allow: ["ViewChannel", "SendMessages", "AttachFiles"]
-          }
+          { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
+          { id: user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
+          { id: STAFF_ROLE, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
         ]
       });
 
-      const closeRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("close_ticket")
-          .setLabel("Chiudi Ticket")
-          .setStyle(ButtonStyle.Danger)
-          .setEmoji("🔒")
-      );
-
-      // 🪖 Messaggio di benvenuto nel nuovo ticket
-      const welcomeEmbed = new EmbedBuilder()
-        .setColor(0x2563eb)
-        .setTitle("🎟️ Benvenuto nel Customer Service DM Alpha")
-        .setDescription(
-          `Salve ${user}, un membro dello **Staff Operativo** la assisterà a breve.\n\n` +
-            "Può descrivere la sua richiesta o problema qui sotto. " +
-            "Quando la conversazione sarà conclusa, può chiudere il ticket cliccando il pulsante o scrivendo **chiudi il ticket**."
-        )
-        .setFooter({ text: "DM Alpha — Support Desk" })
-        .setTimestamp();
-
-      await newTicket.send({ embeds: [welcomeEmbed], components: [closeRow] });
-
-      // Risposta nel ticket originale
-      await message.reply({
-        content: `✅ Ho creato un canale dedicato per la tua assistenza: ${newTicket}`,
+      // Messaggio nel nuovo ticket
+      await staffTicket.send({
+        content: `<@${user.id}> <@&${STAFF_ROLE}>`,
+        embeds: [
+          new EmbedBuilder()
+            .setColor(0x2563eb)
+            .setTitle("🎧 Assistenza Umana Richiesta")
+            .setDescription(
+              `Un operatore umano sarà qui a breve.\n\n` +
+              `Prepara una descrizione chiara del problema.`
+            )
+            .setTimestamp()
+        ]
       });
 
-      // 🔒 Chiudi il ticket precedente (dove è stato scritto “voglio parlare con uno staffer”)
-      if (message.channel.name.startsWith("ticket-")) {
-        const closingEmbed = new EmbedBuilder()
-          .setColor(0x9ca3af)
-          .setTitle("🔒 Ticket Trasferito")
-          .setDescription(
-            `La conversazione è stata trasferita su ${newTicket}.\nQuesto ticket verrà chiuso automaticamente.`
-          )
-          .setTimestamp();
+      // Comunica all’utente
+      await message.reply({
+        content: `✅ Ho trasferito la richiesta ad un **operatore umano**: ${staffTicket}`
+      });
 
-        await message.channel.send({ embeds: [closingEmbed] });
-        setTimeout(() => message.channel.delete().catch(() => {}), 5000);
-      }
+      // 🔒 Chiudi ticket precedente
+      await Ticket.findOneAndUpdate({ channelId: channel.id }, { status: "closed" });
+      setTimeout(() => channel.delete().catch(() => {}), 4000);
+
+      return;
     }
 
     // ─────────────────────────────────────────────
@@ -111,73 +110,45 @@ export default function aiListener(client) {
     if (content.includes("provo a risolvere io")) {
       const embed = new EmbedBuilder()
         .setColor(0x374151)
-        .setAuthor({ name: "DM Alpha — AutoSupport" })
+        .setTitle("🧠 Supporto Automatica Attivo")
         .setDescription(
-          `Va bene ${user}, descriva il problema in modo dettagliato qui sotto.\n\n` +
-            "📘 Il sistema cercherà di identificare la causa del problema o di inoltrare la segnalazione al **Dipartimento Tecnico**."
+          `Perfetto ${user}, descrivi il problema.\n` +
+          `Il sistema proverà ad identificarlo automaticamente.`
         )
-        .setFooter({ text: "Sistema di Assistenza Automatica Attivo" })
         .setTimestamp();
-
       return message.reply({ embeds: [embed] });
     }
 
     // ─────────────────────────────────────────────
-    // 🔒 CHIUSURA AUTOMATICA SU RICHIESTA
+    // 🔒 CHIUSURA MANUALE
     // ─────────────────────────────────────────────
-    const closeTriggers = [
-      "chiudi il ticket",
-      "puoi chiudere",
-      "ho risolto",
-      "puoi chiudere il ticket",
-      "grazie puoi chiudere"
-    ];
+    if (
+      content.includes("chiudi il ticket") ||
+      content.includes("ho risolto") ||
+      content.includes("puoi chiudere")
+    ) {
+      await Ticket.findOneAndUpdate({ channelId: channel.id }, { status: "closed" });
 
-    if (closeTriggers.some((t) => content.includes(t))) {
-      if (message.channel.name.startsWith("ticket-")) {
-        const embed = new EmbedBuilder()
-          .setColor(0x9ca3af)
-          .setTitle("🔒 Ticket Chiuso")
-          .setDescription(`Il ticket è stato chiuso su richiesta di ${user}.`)
-          .setTimestamp();
+      await channel.send({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(0x9ca3af)
+            .setTitle("🔒 Ticket Chiuso")
+            .setDescription(`Richiesto da ${user}.`)
+            .setTimestamp()
+        ]
+      });
 
-        await message.channel.send({ embeds: [embed] });
-        setTimeout(() => message.channel.delete().catch(() => {}), 5000);
-      }
+      setTimeout(() => channel.delete().catch(() => {}), 4000);
     }
 
     // ─────────────────────────────────────────────
-    // 🚨 LINGUAGGIO INAPPROPRIATO
+    // 🚨 LINGUAGGIO INAPPROPRIATO → Segnala
     // ─────────────────────────────────────────────
-    if (content.includes("gay") || content.includes("frocio") || content.includes("insulto")) {
-      const embed = new EmbedBuilder()
-        .setColor(0xe11d48)
-        .setTitle("⚠️ Linguaggio Inappropriato")
-        .setDescription(
-          `Il messaggio è stato segnalato al **Dipartimento Sicurezza**.\n` +
-            "Le ricordiamo che l'uso di linguaggio offensivo non è tollerato nel server."
-        )
-        .setFooter({ text: "Sistema di Sorveglianza Attivo" })
-        .setTimestamp();
-
-      await message.reply({ embeds: [embed] });
-    }
-  });
-
-  // ─────────────────────────────────────────────
-  // 🔘 CHIUSURA MANUALE CON PULSANTE
-  // ─────────────────────────────────────────────
-  client.on("interactionCreate", async (interaction) => {
-    if (!interaction.isButton()) return;
-    if (interaction.customId === "close_ticket") {
-      const embed = new EmbedBuilder()
-        .setColor(0x9ca3af)
-        .setTitle("🔒 Ticket Chiuso")
-        .setDescription(`Il ticket è stato chiuso da ${interaction.user}.`)
-        .setTimestamp();
-
-      await interaction.channel.send({ embeds: [embed] });
-      setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
+    if (["gay", "frocio", "negro", "insulto"].some(w => content.includes(w))) {
+      await channel.send({
+        content: `⚠️ <@&${STAFF_ROLE}> Linguaggio potenzialmente offensivo rilevato.`
+      });
     }
   });
 }
