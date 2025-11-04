@@ -1,36 +1,9 @@
-import fs from "fs";
-import path from "path";
+import { ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "discord.js";
 import Ticket from "../core/models/Ticket.js";
-import { generateTranscript } from "../core/transcript.js";
-import { ChannelType, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
-const TICKETS_FILE = path.resolve("src/data/activeTickets.json");
-const LOG_CHANNEL_ID = "1435294808045256704";
-
-// Carica Ticket attivi + contatore
-let ACTIVE_TICKETS = new Set();
-let COUNTER = 1;
-let STAFF_ENGAGED = new Set();
-
-try {
-  const data = JSON.parse(fs.readFileSync(TICKETS_FILE));
-  ACTIVE_TICKETS = new Set(data.active || []);
-  COUNTER = data.counter || 1;
-} catch {}
-
-// Salvataggio persistente
-function saveTickets() {
-  fs.writeFileSync(
-    TICKETS_FILE,
-    JSON.stringify({ active: [...ACTIVE_TICKETS], counter: COUNTER }, null, 2)
-  );
-}
+const STAFF_LOG_CHANNEL = "1435285738185953390"; // Canale staff claim
 
 export default function ticketSystem(client) {
-
-  // ─────────────────────────────────────────────
-  // 🎟️ CREAZIONE TICKET
-  // ─────────────────────────────────────────────
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isButton()) return;
 
@@ -46,127 +19,67 @@ export default function ticketSystem(client) {
     const user = interaction.user;
     const guild = interaction.guild;
 
-    // Anti doppia apertura
-    const openTicket = await Ticket.findOne({ userId: user.id, status: "open" });
-    if (openTicket)
+    const existing = await Ticket.findOne({ userId: user.id, status: "open" });
+    if (existing) {
       return interaction.reply({ content: "⚠️ Hai già un ticket aperto.", ephemeral: true });
+    }
 
-    // Numerazione progressiva
-    const ticketNumber = String(COUNTER).padStart(3, "0");
-    COUNTER++;
-    saveTickets();
-
-    // Crea canale
     const channel = await guild.channels.create({
-      name: `ticket-${ticketNumber}`,
+      name: `ticket-${user.username}`,
       type: ChannelType.GuildText,
       topic: `${type.label} — Aperto da ${user.tag}`,
       permissionOverwrites: [
         { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-        { id: user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
+        { id: user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
       ]
     });
 
-    ACTIVE_TICKETS.add(channel.id);
-    saveTickets();
-
     await Ticket.create({
-      ticketId: channel.id,
       channelId: channel.id,
       userId: user.id,
-      type: type.label,
+      claimed: false,
       status: "open",
-      createdAt: new Date()
+      type: type.label
     });
 
-    // Pulsanti
+    // Pulsanti dentro al ticket
     const buttons = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("ticket_claim").setLabel("🟢 Reclama Ticket").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("ticket_add_user").setLabel("➕ Aggiungi Utente").setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId("ticket_close").setLabel("🔒 Chiudi Ticket").setStyle(ButtonStyle.Danger)
     );
 
-    const embed = new EmbedBuilder()
+    const welcomeEmbed = new EmbedBuilder()
+      .setColor(type.color)
       .setTitle(`🎟️ Ticket — ${type.label}`)
       .setDescription(
-        `Salve <@${user.id}>.\n\n` +
-        `Sono **DM Alpha**, assistente operativo.\n` +
-        `Spiega il tuo problema in modo chiaro.\n` +
-        `Un operatore ti assisterà appena possibile.\n\n` +
-        `❗ *Comportamenti scorretti verranno registrati.*`
-      )
-      .setColor(type.color)
-      .setTimestamp();
+        `Salve <@${user.id}>.\n` +
+        `Sono **DM Alpha**, assistenza automatica del server.\n\n` +
+        `• Descrivi il problema in modo chiaro.\n` +
+        `• Se l’operatore interviene, rimango in silenzio.\n\n` +
+        `⏱️ Attendere l'assegnazione da parte dello Staff.`
+      );
 
-    await channel.send({ content: `<@${user.id}>`, embeds: [embed], components: [buttons] });
+    await channel.send({ content: `<@${user.id}>`, embeds: [welcomeEmbed], components: [buttons] });
 
-    await interaction.reply({ content: `✅ Ticket aperto: <#${channel.id}>`, ephemeral: true });
-  });
+    // Log nel canale staff con pulsante reclamo
+    const staffChannel = guild.channels.cache.get(STAFF_LOG_CHANNEL);
 
-  // ─────────────────────────────────────────────
-  // 🟢 RECLAMO TICKET (STAFF)
-  // ─────────────────────────────────────────────
-  client.on("interactionCreate", async (interaction) => {
-    if (!interaction.isButton()) return;
-    if (interaction.customId !== "ticket_claim") return;
+    const claimRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`claim_${channel.id}`).setLabel("🟢 Reclama Ticket").setStyle(ButtonStyle.Success)
+    );
 
-    const channel = interaction.channel;
-    const staffMember = interaction.member;
+    const staffEmbed = new EmbedBuilder()
+      .setColor("#22c55e")
+      .setTitle("🟢 Nuovo Ticket Aperto")
+      .setDescription(
+        `**Tipo:** ${type.label}\n` +
+        `**Utente:** <@${user.id}>\n` +
+        `**Canale:** <#${channel.id}>\n\n` +
+        `Premi **Reclama Ticket** per prendere in carico.`
+      );
 
-    const allowedStaffRoles = [
-      "1429034166229663826","1429034167781294080","1429034175171792988","1429034176014843944",
-      "1429034177000509451","1429034177898086491","1429034178766180444",
-      "1429034179747778560","1431283077824512112","1429034157467635802"
-    ];
+    await staffChannel.send({ embeds: [staffEmbed], components: [claimRow] });
 
-    if (!allowedStaffRoles.some(id => staffMember.roles.cache.has(id)))
-      return interaction.reply({ content: "❌ Solo lo staff può reclamare questo ticket.", ephemeral: true });
-
-    await channel.permissionOverwrites.edit(staffMember.id, {
-      ViewChannel: true, SendMessages: true, ReadMessageHistory: true
-    });
-
-    STAFF_ENGAGED.add(channel.id);
-
-    await interaction.reply({ content: `🟢 Ticket preso in carico da <@${staffMember.id}>.` });
-  });
-
-  // ─────────────────────────────────────────────
-  // 🔒 CHIUSURA + TRASCRIZIONE PDF
-  // ─────────────────────────────────────────────
-  client.on("interactionCreate", async (interaction) => {
-    if (!interaction.isButton()) return;
-    if (interaction.customId !== "ticket_close") return;
-
-    const channel = interaction.channel;
-
-    await interaction.reply("🔄 Generazione trascrizione...");
-
-    const pdfPath = await generateTranscript(channel);
-    const logChannel = interaction.guild.channels.cache.get(LOG_CHANNEL_ID);
-
-    if (logChannel) {
-      await logChannel.send({
-        content: `📑 **Trascrizione Ticket**\nTicket: <#${channel.id}>`,
-        files: [pdfPath]
-      });
-    }
-
-    ACTIVE_TICKETS.delete(channel.id);
-    STAFF_ENGAGED.delete(channel.id);
-    saveTickets();
-
-    setTimeout(() => channel.delete().catch(() => {}), 3000);
-  });
-
-  // ─────────────────────────────────────────────
-  // 🧹 AUTO-RIMOZIONE SE CANALE ELIMINATO MANUALMENTE
-  // ─────────────────────────────────────────────
-  client.on("channelDelete", async (channel) => {
-    if (ACTIVE_TICKETS.has(channel.id)) {
-      ACTIVE_TICKETS.delete(channel.id);
-      STAFF_ENGAGED.delete(channel.id);
-      saveTickets();
-      console.log(`🧹 Ticket rimosso manualmente → Registro aggiornato (${channel.name})`);
-    }
+    await interaction.reply({ content: `✅ Ticket creato: <#${channel.id}>`, ephemeral: true });
   });
 }
