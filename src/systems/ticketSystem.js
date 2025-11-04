@@ -1,13 +1,16 @@
 import fs from "fs";
 import path from "path";
 import Ticket from "../core/models/Ticket.js";
+import { generateTranscript } from "../core/transcript.js";
 import { ChannelType, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
 const TICKETS_FILE = path.resolve("src/data/activeTickets.json");
+const LOG_CHANNEL_ID = "1435294808045256704";
 
-// Carica Ticket attivi + Contatore numerazione
+// Carica Ticket attivi + contatore
 let ACTIVE_TICKETS = new Set();
 let COUNTER = 1;
+let STAFF_ENGAGED = new Set();
 
 try {
   const data = JSON.parse(fs.readFileSync(TICKETS_FILE));
@@ -17,16 +20,16 @@ try {
 
 // Salvataggio persistente
 function saveTickets() {
-  fs.writeFileSync(TICKETS_FILE, JSON.stringify({
-    active: [...ACTIVE_TICKETS],
-    counter: COUNTER
-  }, null, 2));
+  fs.writeFileSync(
+    TICKETS_FILE,
+    JSON.stringify({ active: [...ACTIVE_TICKETS], counter: COUNTER }, null, 2)
+  );
 }
 
 export default function ticketSystem(client) {
 
   // ─────────────────────────────────────────────
-  // 🎟️ Creazione Ticket
+  // 🎟️ CREAZIONE TICKET
   // ─────────────────────────────────────────────
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isButton()) return;
@@ -43,13 +46,12 @@ export default function ticketSystem(client) {
     const user = interaction.user;
     const guild = interaction.guild;
 
-    // Anti-Spam: se l’utente ha già un ticket aperto → stop
+    // Anti doppia apertura
     const openTicket = await Ticket.findOne({ userId: user.id, status: "open" });
-    if (openTicket) {
+    if (openTicket)
       return interaction.reply({ content: "⚠️ Hai già un ticket aperto.", ephemeral: true });
-    }
 
-    // Numerazione ticket
+    // Numerazione progressiva
     const ticketNumber = String(COUNTER).padStart(3, "0");
     COUNTER++;
     saveTickets();
@@ -77,58 +79,94 @@ export default function ticketSystem(client) {
       createdAt: new Date()
     });
 
-    // Bottone chiusura
-    const closeButton = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("ticket_close")
-        .setLabel("🔒 Chiudi Ticket")
-        .setStyle(ButtonStyle.Danger)
+    // Pulsanti
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("ticket_claim").setLabel("🟢 Reclama Ticket").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("ticket_close").setLabel("🔒 Chiudi Ticket").setStyle(ButtonStyle.Danger)
     );
 
     const embed = new EmbedBuilder()
       .setTitle(`🎟️ Ticket — ${type.label}`)
-      .setDescription(`Benvenuto <@${user.id}>!\n\nSpiega il tuo problema in modo chiaro.\nUno staffer risponderà appena possibile.`)
-      .setColor(type.color);
+      .setDescription(
+        `Salve <@${user.id}>.\n\n` +
+        `Sono **DM Alpha**, assistente operativo.\n` +
+        `Spiega il tuo problema in modo chiaro.\n` +
+        `Un operatore ti assisterà appena possibile.\n\n` +
+        `❗ *Comportamenti scorretti verranno registrati.*`
+      )
+      .setColor(type.color)
+      .setTimestamp();
 
-    await channel.send({ content: `<@${user.id}>`, embeds: [embed], components: [closeButton] });
+    await channel.send({ content: `<@${user.id}>`, embeds: [embed], components: [buttons] });
 
     await interaction.reply({ content: `✅ Ticket aperto: <#${channel.id}>`, ephemeral: true });
   });
 
   // ─────────────────────────────────────────────
-  // 🔒 Chiusura Ticket
+  // 🟢 RECLAMO TICKET (STAFF)
+  // ─────────────────────────────────────────────
+  client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isButton()) return;
+    if (interaction.customId !== "ticket_claim") return;
+
+    const channel = interaction.channel;
+    const staffMember = interaction.member;
+
+    const allowedStaffRoles = [
+      "1429034166229663826","1429034167781294080","1429034175171792988","1429034176014843944",
+      "1429034177000509451","1429034177898086491","1429034178766180444",
+      "1429034179747778560","1431283077824512112","1429034157467635802"
+    ];
+
+    if (!allowedStaffRoles.some(id => staffMember.roles.cache.has(id)))
+      return interaction.reply({ content: "❌ Solo lo staff può reclamare questo ticket.", ephemeral: true });
+
+    await channel.permissionOverwrites.edit(staffMember.id, {
+      ViewChannel: true, SendMessages: true, ReadMessageHistory: true
+    });
+
+    STAFF_ENGAGED.add(channel.id);
+
+    await interaction.reply({ content: `🟢 Ticket preso in carico da <@${staffMember.id}>.` });
+  });
+
+  // ─────────────────────────────────────────────
+  // 🔒 CHIUSURA + TRASCRIZIONE PDF
   // ─────────────────────────────────────────────
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isButton()) return;
     if (interaction.customId !== "ticket_close") return;
 
     const channel = interaction.channel;
-    const ticket = await Ticket.findOne({ channelId: channel.id, status: "open" });
 
-    if (!ticket)
-      return interaction.reply({ content: "❌ Questo ticket risulta già chiuso.", ephemeral: true });
+    await interaction.reply("🔄 Generazione trascrizione...");
 
-    ticket.status = "closed";
-    await ticket.save();
+    const pdfPath = await generateTranscript(channel);
+    const logChannel = interaction.guild.channels.cache.get(LOG_CHANNEL_ID);
+
+    if (logChannel) {
+      await logChannel.send({
+        content: `📑 **Trascrizione Ticket**\nTicket: <#${channel.id}>`,
+        files: [pdfPath]
+      });
+    }
 
     ACTIVE_TICKETS.delete(channel.id);
+    STAFF_ENGAGED.delete(channel.id);
     saveTickets();
 
-    await interaction.reply("🔒 Ticket chiuso. Il canale verrà eliminato tra 5 secondi...");
-    setTimeout(() => channel.delete().catch(() => {}), 5000);
+    setTimeout(() => channel.delete().catch(() => {}), 3000);
   });
 
   // ─────────────────────────────────────────────
-  // 🧹 Auto-rimozione se ticket viene cancellato manualmente
+  // 🧹 AUTO-RIMOZIONE SE CANALE ELIMINATO MANUALMENTE
   // ─────────────────────────────────────────────
   client.on("channelDelete", async (channel) => {
     if (ACTIVE_TICKETS.has(channel.id)) {
       ACTIVE_TICKETS.delete(channel.id);
+      STAFF_ENGAGED.delete(channel.id);
       saveTickets();
-      await Ticket.findOneAndUpdate({ channelId: channel.id }, { status: "closed" });
-      console.log(`🧹 Ticket eliminato manualmente → Rimosso dal registro (${channel.name})`);
+      console.log(`🧹 Ticket rimosso manualmente → Registro aggiornato (${channel.name})`);
     }
   });
 }
-
-
