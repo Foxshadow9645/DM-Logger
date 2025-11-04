@@ -35,12 +35,16 @@ export default function ticketSystem(client) {
     });
 
     await Ticket.create({
-      channelId: channel.id,
-      userId: user.id,
-      claimed: false,
-      status: "open",
-      type: type.label
-    });
+  ticketId: channel.id, // 👈 Aggiunto
+  channelId: channel.id,
+  userId: user.id,
+  claimed: false,
+  staffId: null,
+  status: "open",
+  type: type.label,
+  createdAt: new Date()
+});
+
 
     // Pulsanti dentro al ticket
     const buttons = new ActionRowBuilder().addComponents(
