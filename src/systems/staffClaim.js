@@ -51,8 +51,26 @@ export default function staffClaim(client) {
     const hasAccess = newChannel.permissionsFor(ticket.staffId)?.has("ViewChannel");
 
     if (!hasAccess) {
-      await newChannel.send(`🔕 **L'operatore <@${ticket.staffId}> ha lasciato la conversazione.**`);
-      await Ticket.findOneAndUpdate({ channelId: newChannel.id }, { claimed: false, staffId: null });
-    }
+  await newChannel.send({
+    embeds: [
+      new EmbedBuilder()
+        .setColor("#facc15")
+        .setTitle("🔕 Operatore non più presente")
+        .setDescription(
+          `L'operatore <@${ticket.staffId}> ha lasciato la conversazione.\n\n` +
+          `🟡 Il ticket è ora **in attesa di un nuovo operatore**.\n` +
+          `Se necessiti assistenza immediata, scrivi:\n` +
+          `**voglio parlare con uno staffer** per richiedere di nuovo assegnazione.`
+        )
+        .setTimestamp()
+    ]
+  });
+
+  await Ticket.findOneAndUpdate(
+    { channelId: newChannel.id },
+    { claimed: false, staffId: null }
+  );
+}
+
   });
 }
