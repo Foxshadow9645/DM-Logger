@@ -4,10 +4,13 @@ import fetch from "node-fetch";
  * Testa la connessione con l'IA locale (Ollama o LM Studio)
  * e verifica che il modello sia attivo e risponda correttamente.
  */
-
 export async function testAILocal() {
-  const AI_URL = process.env.AI_URL || "http://localhost:4000/respond";
+  // Usa base URL, non l'endpoint, così aggiungiamo noi /respond in modo sicuro
+  const BASE = process.env.AI_URL || "http://127.0.0.1:4000";
+  const ENDPOINT = `${BASE.replace(/\/+$/, "")}/respond`;
+
   console.log("🧠 Test connessione modulo AI...");
+  console.log("→ Endpoint:", ENDPOINT);
 
   try {
     const testPrompt = {
@@ -15,7 +18,7 @@ export async function testAILocal() {
       context: "Diagnostica interna."
     };
 
-    const res = await fetch(AI_URL, {
+    const res = await fetch(ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(testPrompt)
@@ -27,14 +30,14 @@ export async function testAILocal() {
     }
 
     const data = await res.json();
-    if (data.reply) {
+    if (data?.reply) {
       console.log("✅ AI risponde correttamente:");
-      console.log("→", data.reply.slice(0, 120) + "...");
+      console.log("→", (data.reply || "").slice(0, 120) + "...");
       return true;
-    } else {
-      console.error("⚠️ AI non ha restituito testo valido.");
-      return false;
     }
+
+    console.error("⚠️ AI non ha restituito testo valido.");
+    return false;
   } catch (err) {
     console.error("❌ Errore durante la verifica AI:", err.message);
     return false;
