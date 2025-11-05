@@ -1,33 +1,61 @@
 // ─────────────────────────────────────────────
-// 🧠 IMPORT: AI L2 via Ollama (locale nel container)
+// 🤖 DM REALM ALPHA — AI MICROSERVICE (ibrido L2)
 // ─────────────────────────────────────────────
-import fetch from "node-fetch";
 
-// Istruzioni stile professionale
+import express from "express";
+import bodyParser from "body-parser";
+import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import fetch from "node-fetch";
+dotenv.config();
+
+// Server Express
+const app = express();
+app.use(bodyParser.json());
+
+// Porta del microservizio
+const PORT = process.env.AI_PORT || 4000;
+
+// ─────────────────────────────────────────────
+// 📚 Carica scripts.json (risposte locali)
+// ─────────────────────────────────────────────
+const scriptPath = path.resolve("src/ai/scripts.json");
+let scripts = {};
+
+try {
+  scripts = JSON.parse(fs.readFileSync(scriptPath, "utf-8"));
+  console.log(`📜 Script AI caricati (${Object.keys(scripts).length} categorie)`);
+} catch {
+  console.warn("⚠️ Nessun scripts.json trovato. Verrà usata solo AI.");
+}
+
+// ─────────────────────────────────────────────
+// 🎙️ Personalità AI (tono professionale scelto)
+// ─────────────────────────────────────────────
 const aiInstructions = `
 Sei l'assistente ufficiale del Supporto DM REALM ALPHA.
 Tono: professionale, calmo, chiaro. Nessuna emoji.
-Se la richiesta è chiara, rispondi in modo diretto.
-Se la richiesta è confusa, chiedi un dettaglio specifico.
+Se la richiesta è chiara, rispondi direttamente.
+Se la richiesta è vaga, chiedi un dettaglio specifico.
 Se serve staff, rispondi: "Sto inoltrando questa richiesta allo staff. Attendere."
 `;
 
 // ─────────────────────────────────────────────
-// 🧩 FUNZIONE RISPOSTA AI IBRIDA
+// 🧠 FUNZIONE IBRIDA (Script locale → AI → Fallback)
 // ─────────────────────────────────────────────
-async function generateResponse(question, context = "") {
+async function generateResponse(question) {
   const q = question.toLowerCase();
 
-  // 1️⃣ RISPOSTE DEFINITE NEL scripts.json
+  // 1️⃣ Risposte locali da scripts.json
   for (const key in scripts) {
     if (q.includes(key.toLowerCase())) {
-      const possible = scripts[key];
-      const random = possible[Math.floor(Math.random() * possible.length)];
-      return random; // risposta locale → immediata
+      const replies = scripts[key];
+      return replies[Math.floor(Math.random() * replies.length)];
     }
   }
 
-  // 2️⃣ FALLBACK INTELLIGENTE → CHIAMA OLLAMA
+  // 2️⃣ AI avanzata via Ollama
   try {
     const response = await fetch("http://localhost:11434/api/generate", {
       method: "POST",
@@ -41,28 +69,27 @@ async function generateResponse(question, context = "") {
     const data = await response.json();
     if (data?.response) return data.response.trim();
   } catch (err) {
-    console.warn("⚠️ Ollama non disponibile, uso fallback statico.");
+    console.log("⚠️ AI locale non raggiungibile:", err.message);
   }
 
-  // 3️⃣ FALLBACK FINALE (nessuna AI disponibile)
+  // 3️⃣ Fallback finale → escalation staff
   return "Sto inoltrando questa richiesta allo staff. Attendere.";
 }
 
 // ─────────────────────────────────────────────
-// 🔗 ENDPOINT API — /respond (aggiornato!)
+// 🔗 ENDPOINT API — POST /respond
 // ─────────────────────────────────────────────
 app.post("/respond", async (req, res) => {
-  try {
-    const { question, context } = req.body;
+  const { question } = req.body;
+  if (!question) return res.status(400).json({ error: "Parametro 'question' mancante." });
 
-    if (!question || question.trim().length === 0) {
-      return res.status(400).json({ error: "Richiesta non valida: 'question' mancante." });
-    }
+  const reply = await generateResponse(question);
+  res.json({ reply });
+});
 
-    const reply = await generateResponse(question, context);
-    res.json({ reply, model: "PHI-3 Mini (Ollama) + Script Local" });
-  } catch (err) {
-    console.error("❌ Errore durante la risposta AI:", err.message);
-    res.status(500).json({ error: "Errore interno AI" });
-  }
+// ─────────────────────────────────────────────
+// 🚀 START
+// ─────────────────────────────────────────────
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🤖 AI Microservice attivo su http://localhost:${PORT}/respond`);
 });
