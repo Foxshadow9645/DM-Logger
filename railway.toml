@@ -1,5 +1,5 @@
 [build]
-builder = "DOCKERFILE"
+builder = "dockerfile"
 
-[start]
-cmd = "npm start"
+[deploy]
+restartPolicyType = "ON_FAILURE"
