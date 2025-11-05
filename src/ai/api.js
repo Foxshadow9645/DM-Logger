@@ -1,70 +1,55 @@
 // ─────────────────────────────────────────────
-// 🤖 DM REALM ALPHA — AI MICROSERVICE
-// Versione 2.0 – Compatibile Node.js v22 / Express 4.19
+// 🧠 IMPORT: AI L2 via Ollama (locale nel container)
 // ─────────────────────────────────────────────
+import fetch from "node-fetch";
 
-import express from "express";
-import bodyParser from "body-parser";
-import dotenv from "dotenv";
-dotenv.config();
-
-// ─────────────────────────────────────────────
-// ⚙️ CONFIGURAZIONE DI BASE
-// ─────────────────────────────────────────────
-const app = express();
-app.use(bodyParser.json());
-
-const PORT = process.env.AI_PORT || 4000;
-
-// Messaggio di avvio
-console.log("🧠 Inizializzazione microservizio DM ALPHA AI...");
-console.log("⏳ Caricamento modelli ibridi...");
-
-// ─────────────────────────────────────────────
-// 📚 DATABASE RISPOSTE STATICHE (SCRIPT BASE)
-// ─────────────────────────────────────────────
-import fs from "fs";
-import path from "path";
-
-const scriptPath = path.resolve("src/ai/scripts.json");
-let scripts = {};
-
-try {
-  scripts = JSON.parse(fs.readFileSync(scriptPath, "utf-8"));
-  console.log(`📜 Script AI caricati (${Object.keys(scripts).length} categorie)`);
-} catch (err) {
-  console.warn("⚠️ Nessun file scripts.json trovato o errore di parsing.");
-}
+// Istruzioni stile professionale
+const aiInstructions = `
+Sei l'assistente ufficiale del Supporto DM REALM ALPHA.
+Tono: professionale, calmo, chiaro. Nessuna emoji.
+Se la richiesta è chiara, rispondi in modo diretto.
+Se la richiesta è confusa, chiedi un dettaglio specifico.
+Se serve staff, rispondi: "Sto inoltrando questa richiesta allo staff. Attendere."
+`;
 
 // ─────────────────────────────────────────────
 // 🧩 FUNZIONE RISPOSTA AI IBRIDA
 // ─────────────────────────────────────────────
-function generateResponse(question, context = "") {
+async function generateResponse(question, context = "") {
   const q = question.toLowerCase();
 
-  // 1️⃣ Risposte definite nello script.json
+  // 1️⃣ RISPOSTE DEFINITE NEL scripts.json
   for (const key in scripts) {
     if (q.includes(key.toLowerCase())) {
       const possible = scripts[key];
       const random = possible[Math.floor(Math.random() * possible.length)];
-      return random;
+      return random; // risposta locale → immediata
     }
   }
 
-  // 2️⃣ Risposte predefinite per fallback
-  if (q.includes("ai") || q.includes("assistente")) {
-    return "🧠 Sono l’assistente DM ALPHA, posso segnalare, analizzare o creare log. Come posso aiutarti?";
-  }
-  if (q.includes("ticket") || q.includes("problema")) {
-    return "📩 Sembra che tu stia parlando di un ticket. Posso aiutarti ad aprirne uno o a contattare lo staff.";
+  // 2️⃣ FALLBACK INTELLIGENTE → CHIAMA OLLAMA
+  try {
+    const response = await fetch("http://localhost:11434/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "phi3:mini",
+        prompt: `${aiInstructions}\nUtente: ${question}\nRisposta:`
+      })
+    });
+
+    const data = await response.json();
+    if (data?.response) return data.response.trim();
+  } catch (err) {
+    console.warn("⚠️ Ollama non disponibile, uso fallback statico.");
   }
 
-  // 3️⃣ Fallback finale
-  return "🤖 Non ho informazioni specifiche su questo argomento, ma il mio sistema di log lo inoltrerà allo staff per analisi.";
+  // 3️⃣ FALLBACK FINALE (nessuna AI disponibile)
+  return "Sto inoltrando questa richiesta allo staff. Attendere.";
 }
 
 // ─────────────────────────────────────────────
-// 🔗 ENDPOINT API — /respond
+// 🔗 ENDPOINT API — /respond (aggiornato!)
 // ─────────────────────────────────────────────
 app.post("/respond", async (req, res) => {
   try {
@@ -74,25 +59,10 @@ app.post("/respond", async (req, res) => {
       return res.status(400).json({ error: "Richiesta non valida: 'question' mancante." });
     }
 
-    const reply = generateResponse(question, context);
-    res.json({ reply, model: "DM-ALPHA-Local" });
+    const reply = await generateResponse(question, context);
+    res.json({ reply, model: "PHI-3 Mini (Ollama) + Script Local" });
   } catch (err) {
     console.error("❌ Errore durante la risposta AI:", err.message);
     res.status(500).json({ error: "Errore interno AI" });
   }
-});
-
-// ─────────────────────────────────────────────
-// 🧪 ENDPOINT DI TEST — GET /ping
-// ─────────────────────────────────────────────
-app.get("/ping", (req, res) => {
-  res.json({ status: "online", service: "DM-ALPHA-AI", timestamp: Date.now() });
-});
-
-// ─────────────────────────────────────────────
-// 🚀 AVVIO SERVER
-// ─────────────────────────────────────────────
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🤖 DM ALPHA AI Microservice attivo sulla porta ${PORT}`);
-  console.log("✅ Pronto per ricevere richieste su /respond e /ping");
 });
