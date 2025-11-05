@@ -2,16 +2,22 @@ FROM ollama/ollama:latest
 
 WORKDIR /app
 
-# Copia il bot
+# Copia codice bot
 COPY . .
 
-# Installa node e npm
+# Installa node + dipendenze
 RUN apt update && apt install -y nodejs npm
 RUN npm install
 
-# Avvio runtime:
-# 1) Avvia Ollama
-# 2) Aspetta 3 secondi che parta
-# 3) Scarica il modello (una sola volta)
-# 4) Avvia il bot
-CMD ollama serve & sleep 3 && ollama pull phi3:mini && node src/index.js
+# Avvio:
+# - Avvia Ollama in background
+# - Aspetta che si accenda
+# - Scarica modello
+# - Avvia AI microservice
+# - Avvia bot
+CMD ollama serve & \
+    sleep 6 && \
+    ollama pull phi3:mini && \
+    node src/ai/api.js & \
+    node src/index.js
+
