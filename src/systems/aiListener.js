@@ -1,10 +1,6 @@
-// ─────────────────────────────────────────────
-// 🧠 AI LISTENER — Customer Service & Ticket Manager (L2)
-// ─────────────────────────────────────────────
-
-import Ticket from "../core/models/Ticket.js";
-import { EmbedBuilder } from "discord.js";
 import fetch from "node-fetch";
+import Ticket from "../models/Ticket.js";
+import { EmbedBuilder } from "discord.js";
 
 export default function aiListener(client) {
   client.on("messageCreate", async (message) => {
@@ -13,60 +9,54 @@ export default function aiListener(client) {
     const channel = message.channel;
     if (!channel.name.startsWith("ticket-")) return;
 
-    // Carica stato ticket
     const ticket = await Ticket.findOne({ channelId: channel.id });
-    if (!ticket) return;
+    if (!ticket || ticket.claimed) return; // Se uno staffer ha già preso il ticket → AI non parla
 
-    // 🔇 Se lo staff ha reclamato → AI tace
-    if (ticket.claimed === true) return;
-
-    const userMessage = message.content.trim();
+    const content = message.content.toLowerCase();
     const user = message.author;
 
-    // 👋 Risposte iniziali di cortesia
-    if (["salve", "ciao", "hey", "buongiorno", "buonasera"].some(w => userMessage.toLowerCase().startsWith(w))) {
+    // ✅ Catch frasi che richiedono direttamente staff
+    if (content.includes("voglio parlare con uno staff") || content.includes("operatore")) {
+      return message.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor("#facc15")
+            .setDescription(`📢 Richiesta di assistenza inoltrata.\nUno staffer verrà notificato e prenderà in carico il ticket.`)
+        ]
+      });
+    }
+
+    // ✅ Saluto iniziale
+    if (["salve", "ciao", "hey", "buongiorno", "buonasera"].some(w => content.startsWith(w))) {
       return message.reply({
         embeds: [
           new EmbedBuilder()
             .setColor("#1f2937")
             .setDescription(
-              `Salve ${user}, sono **DM Alpha**.\n\n` +
-              `Sono qui per assisterti finché uno staffer non prenderà in carico il ticket.\n` +
-              `Se desideri parlare con un operatore digita:\n**voglio parlare con uno staffer**`
+              `Salve ${user}, sono **DM Alpha**.\n` +
+              `Sono qui per assisterti finché uno staff non prenderà in carico il ticket.\n\n` +
+              `Se desideri parlare con uno staffer digita:\n**voglio parlare con uno staff**`
             )
         ]
       });
     }
 
-    // 🧠 Se l'utente chiede staff → Escalation
-    if (userMessage.toLowerCase().includes("voglio parlare con uno staff")) {
-      return message.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor("#2563eb")
-            .setDescription(
-              `Ho inoltrato la richiesta.\nUn membro dello staff risponderà il prima possibile.`
-            )
-        ]
-      });
-    }
-
-    // 🤖 Passaggio all'AI Microservizio
+    // ✅ Invio della richiesta al microservizio AI
     try {
-      const response = await fetch(`${process.env.AI_URL || "http://localhost:4000"}/respond`, {
+      const response = await fetch(process.env.AI_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: userMessage })
+        body: JSON.stringify({ question: content, context: "Support ticket conversation" })
       });
 
       const data = await response.json();
-      if (!data?.reply) return;
+      const reply = data.reply || "Al momento non riesco ad elaborare la richiesta."
 
       return message.reply({
         embeds: [
           new EmbedBuilder()
-            .setColor("#0ea5e9")
-            .setDescription(data.reply)
+            .setColor("#4b5563")
+            .setDescription(reply)
         ]
       });
 
@@ -75,10 +65,8 @@ export default function aiListener(client) {
       return message.reply({
         embeds: [
           new EmbedBuilder()
-            .setColor("#ef4444")
-            .setDescription(
-              `Al momento non riesco a elaborare la richiesta, ma lo staff è stato notificato.`
-            )
+            .setColor("#dc2626")
+            .setDescription("⚠️ Non riesco a contattare il supporto automatico. Lo staff è stato notificato.")
         ]
       });
     }
