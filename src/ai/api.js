@@ -42,4 +42,4 @@ app.post("/respond", async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🤖 AI Microservice attivo su http://localhost:${PORT}/respond`);
-});
+}); // ← MANCAVA QUESTA GRAFFA + PARENTESE
