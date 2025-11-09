@@ -1,95 +1,45 @@
-// ─────────────────────────────────────────────
-// 🤖 DM REALM ALPHA — AI MICROSERVICE (ibrido L2)
-// ─────────────────────────────────────────────
-
 import express from "express";
-import bodyParser from "body-parser";
-import dotenv from "dotenv";
-import fs from "fs";
-import path from "path";
 import fetch from "node-fetch";
-dotenv.config();
 
-// Server Express
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json());
 
-// Porta del microservizio
-const PORT = process.env.AI_PORT || 4000;
+const PORT = process.env.PORT || 4000;
+const OLLAMA_API = process.env.OLLAMA_API || "http://localhost:11434/api/generate"; // se Ollama è in container, usa "http://ollama:11434"
 
-// ─────────────────────────────────────────────
-// 📚 Carica scripts.json (risposte locali)
-// ─────────────────────────────────────────────
-const scriptPath = path.resolve("src/ai/scripts.json");
-let scripts = {};
+app.post("/respond", async (req, res) => {
+  const { question, context = "" } = req.body;
 
-try {
-  scripts = JSON.parse(fs.readFileSync(scriptPath, "utf-8"));
-  console.log(`📜 Script AI caricati (${Object.keys(scripts).length} categorie)`);
-} catch {
-  console.warn("⚠️ Nessun scripts.json trovato. Verrà usata solo AI.");
-}
-
-// ─────────────────────────────────────────────
-// 🎙️ Personalità AI (tono professionale scelto)
-// ─────────────────────────────────────────────
-const aiInstructions = `
-Sei l'assistente ufficiale del Supporto DM REALM ALPHA.
-Tono: professionale, calmo, chiaro. Nessuna emoji.
-Se la richiesta è chiara, rispondi direttamente.
-Se la richiesta è vaga, chiedi un dettaglio specifico.
-Se serve staff, rispondi: "Sto inoltrando questa richiesta allo staff. Attendere."
-`;
-
-// ─────────────────────────────────────────────
-// 🧠 FUNZIONE IBRIDA (Script locale → AI → Fallback)
-// ─────────────────────────────────────────────
-async function generateResponse(question) {
-  const q = question.toLowerCase();
-
-  // 1️⃣ Risposte locali da scripts.json
-  for (const key in scripts) {
-    if (q.includes(key.toLowerCase())) {
-      const replies = scripts[key];
-      return replies[Math.floor(Math.random() * replies.length)];
-    }
+  if (!question) {
+    return res.status(400).json({ error: "Domanda mancante." });
   }
 
-  // 2️⃣ AI avanzata via Ollama
+  const prompt = `${context ? `[CONTESTO]: ${context}\n` : ""}[DOMANDA]: ${question}`;
+
   try {
-    const response = await fetch("http://localhost:11434/api/generate", {
+    const ollamaRes = await fetch(OLLAMA_API, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "phi3:mini",
-        prompt: `${aiInstructions}\nUtente: ${question}\nRisposta:`
-      })
+        model: "phi3:mini", // puoi cambiare con "llama3", "mistral", ecc.
+        prompt,
+        stream: false,
+      }),
     });
 
-    const data = await response.json();
-    if (data?.response) return data.response.trim();
+    if (!ollamaRes.ok) {
+      const error = await ollamaRes.text();
+      return res.status(500).json({ error: "Errore Ollama", detail: error });
+    }
+
+    const data = await ollamaRes.json();
+    return res.json({ reply: data.response });
   } catch (err) {
-    console.log("⚠️ AI locale non raggiungibile:", err.message);
+    console.error("Errore contatto Ollama:", err.message);
+    return res.status(500).json({ error: "Errore contatto Ollama", detail: err.message });
   }
-
-  // 3️⃣ Fallback finale → escalation staff
-  return "Sto inoltrando questa richiesta allo staff. Attendere.";
-}
-
-// ─────────────────────────────────────────────
-// 🔗 ENDPOINT API — POST /respond
-// ─────────────────────────────────────────────
-app.post("/respond", async (req, res) => {
-  const { question } = req.body;
-  if (!question) return res.status(400).json({ error: "Parametro 'question' mancante." });
-
-  const reply = await generateResponse(question);
-  res.json({ reply });
 });
 
-// ─────────────────────────────────────────────
-// 🚀 START
-// ─────────────────────────────────────────────
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, () => {
   console.log(`🤖 AI Microservice attivo su http://localhost:${PORT}/respond`);
 });
