@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import Ticket from "../models/Ticket.js";
+import Ticket from "../core/models/Ticket.js";
 import { EmbedBuilder } from "discord.js";
 
 export default function aiListener(client) {
