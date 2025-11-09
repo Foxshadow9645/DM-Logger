@@ -1,14 +1,17 @@
 #!/bin/bash
 
-# Avvia Ollama in background (già incluso nella base image)
+# Avvia Ollama
 ollama serve &
 
-# Aspetta che Ollama sia pronto sulla porta 11434
-echo "⏳ Aspetto Ollama..."
+# Aspetta che Ollama sia online
+echo "⏳ Avvio di Ollama..."
 until curl -s http://localhost:11434 > /dev/null; do
   sleep 1
 done
-echo "✅ Ollama è attivo!"
+echo "✅ Ollama è online!"
+
+# Scarica il modello LLM (adesso che Ollama è attivo)
+ollama pull phi3:mini
 
 # Avvia il microservizio AI
 node src/ai/api.js &
