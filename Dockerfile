@@ -1,13 +1,17 @@
-FROM ollama/ollama:latest
+# Usa immagine base Node
+FROM node:18
 
 WORKDIR /app
-
 COPY . .
 
-RUN apt update && apt install -y nodejs npm
-
+# Installa dipendenze
 RUN npm install
 
-EXPOSE 4000
+# Installa Ollama e avvia server
+RUN curl -fsSL https://ollama.com/install.sh | sh
 
-CMD ["bash", "start.sh"]
+# Serve non parte da solo, quindi usiamo uno script
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]
