@@ -1,23 +1,23 @@
+# Base: Ollama per LLM + Node support
 FROM ollama/ollama:latest
 
-# Crea la cartella di lavoro
+# Cartella di lavoro
 WORKDIR /app
 
-# Copia tutto il codice
+# Copia del progetto
 COPY . .
 
-# Installa Node.js e npm
+# Installa Node.js + npm (per il bot + AI microservice)
 RUN apt update && apt install -y nodejs npm
 
-# Installa le dipendenze
+# Installa le dipendenze Node
 RUN npm install
 
-# Rendi eseguibile lo script
-RUN chmod +x start.sh
+# Assicurati che il modello Ollama sia già disponibile
+RUN ollama pull phi3:mini
 
-# Healthcheck per Ollama
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD curl -f http://localhost:11434/api/tags || exit 1
+# Porta per il microservizio AI
+EXPOSE 4000
 
-# Avvia il bot + microservizi
-CMD ["./start.sh"]
+# Avvia entrambi (Ollama già incluso nel container base)
+CMD ["bash", "start.sh"]
