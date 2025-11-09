@@ -1,45 +1,34 @@
-import express from "express";
+// ─────────────────────────────────────────────
+// 🔗 DM REALM ALPHA — AI CONNECTOR (PIPEDREAM VERSION)
+// ─────────────────────────────────────────────
+
 import fetch from "node-fetch";
+import dotenv from "dotenv";
+dotenv.config();
 
-const app = express();
-app.use(express.json());
-
-const PORT = process.env.PORT || 4000;
-const OLLAMA_API = process.env.OLLAMA_API || "http://localhost:11434/api/generate"; // se Ollama è in container, usa "http://ollama:11434"
-
-app.post("/respond", async (req, res) => {
-  const { question, context = "" } = req.body;
-
-  if (!question) {
-    return res.status(400).json({ error: "Domanda mancante." });
+export async function askAI(question, context = "") {
+  const endpoint = process.env.AI_ENDPOINT; // URL Pipedream es: https://xxx.m.pipedream.net
+  if (!endpoint) {
+    console.error("❌ Nessun endpoint AI configurato nel .env (AI_ENDPOINT mancante)");
+    return "⚠️ Errore interno: endpoint AI non configurato.";
   }
-
-  const prompt = `${context ? `[CONTESTO]: ${context}\n` : ""}[DOMANDA]: ${question}`;
 
   try {
-    const ollamaRes = await fetch(OLLAMA_API, {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "phi3:mini", // puoi cambiare con "llama3", "mistral", ecc.
-        prompt,
-        stream: false,
-      }),
+      body: JSON.stringify({ question, context }),
     });
 
-    if (!ollamaRes.ok) {
-      const error = await ollamaRes.text();
-      return res.status(500).json({ error: "Errore Ollama", detail: error });
+    if (!res.ok) {
+      console.error(`⚠️ Errore chiamata AI: ${res.status}`);
+      return "⚠️ L'assistente non è momentaneamente disponibile.";
     }
 
-    const data = await ollamaRes.json();
-    return res.json({ reply: data.response });
+    const data = await res.json();
+    return data.reply || "⚠️ Nessuna risposta dal modello.";
   } catch (err) {
-    console.error("Errore contatto Ollama:", err.message);
-    return res.status(500).json({ error: "Errore contatto Ollama", detail: err.message });
+    console.error("❌ Errore connessione AI:", err.message);
+    return "⚠️ Errore di connessione con il microservizio AI.";
   }
-});
-
-app.listen(PORT, () => {
-  console.log(`🤖 AI Microservice attivo su http://localhost:${PORT}/respond`);
-}); // ← MANCAVA QUESTA GRAFFA + PARENTESE
+}
