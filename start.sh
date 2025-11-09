@@ -3,18 +3,18 @@
 # Avvia Ollama
 ollama serve &
 
-# Aspetta che Ollama sia online
-echo "⏳ Avvio di Ollama..."
+# Aspetta Ollama
 until curl -s http://localhost:11434 > /dev/null; do
+  echo "⏳ Attesa Ollama..."
   sleep 1
 done
-echo "✅ Ollama è online!"
+echo "✅ Ollama avviato"
 
-# Scarica il modello LLM (adesso che Ollama è attivo)
+# Pull modello
 ollama pull phi3:mini
 
-# Avvia il microservizio AI
+# Avvia microservizio AI
 node src/ai/api.js &
 
-# Avvia il bot Discord
+# Avvia il bot
 node src/index.js
