@@ -37,7 +37,7 @@ import ticketSystem from "./systems/ticketSystem.js";
 import staffClaim from "./systems/staffClaim.js";
 import ticketAddUser from "./systems/ticketAddUser.js";
 import ticketClose from "./systems/ticketClose.js";
-import aiListener from "./systems/aiListener.js"; // Sistema Gemini Integrato
+import aiListener from "./systems/aiListener.js"; // Sistema AI Integrato
 import autoSecurity from "./systems/autoSecurity.js";
 import commandChecker from "./systems/commandChecker.js";
 
@@ -165,25 +165,7 @@ async function autoDeployCommands() {
 client.once("ready", async () => {
   console.log("🚀───────────────────────────────");
   console.log(`✅ DM REALM ALPHA LOGGER attivo come ${client.user.tag}`);
-  console.log("📡 Sistemi attivi: Ticket, AI Gemini, Security, Database");
-  
-  // 👇 DIAGNOSTICA GEMINI (Importante per il debug) 👇
-  try {
-     console.log("🔍 Verifica modelli Gemini disponibili...");
-     const key = process.env.GEMINI_API_KEY;
-     const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-     const data = await resp.json();
-     if (data.models) {
-         console.log("📋 LISTA MODELLI GEMINI ATTIVI:");
-         data.models.forEach(m => console.log(`   - ${m.name.replace("models/", "")}`));
-     } else {
-         console.error("❌ Nessun modello trovato o errore chiave API:", data);
-     }
-  } catch (err) {
-      console.error("❌ Errore diagnostica modelli:", err);
-  }
-  // 👆 FINE DIAGNOSTICA 👆
-
+  console.log("📡 Sistemi attivi: Ticket, AI (Groq/Llama3), Security, Database");
   console.log("🚀───────────────────────────────");
 
   // Auto-deploy e verifica comandi
