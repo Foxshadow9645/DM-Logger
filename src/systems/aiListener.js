@@ -3,7 +3,7 @@ import Ticket from "../core/models/Ticket.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "discord.js";
 
 // ID del canale dove notificare lo staff
-const STAFF_ALERT_CHANNEL_ID = "1197583344356053083";
+const STAFF_ALERT_CHANNEL_ID = "1430240657179541575";
 
 // 🛡️ LISTA RUOLI STAFF (L'IA deve ignorare chi ha questi ruoli)
 const STAFF_ROLES = [
