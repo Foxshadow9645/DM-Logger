@@ -1,65 +1,77 @@
 import { getSmartReply } from "../ai/geminiHandler.js";
 import Ticket from "../core/models/Ticket.js";
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
-// ID dell'umano da notificare
-const HUMAN_STAFF_ID = "1197583344356053083";
+// ID del CANALE dove mandare la notifica staff
+const STAFF_ALERT_CHANNEL_ID = "1197583344356053083";
 
 export default function aiListener(client) {
   client.on("messageCreate", async (message) => {
-    // Ignora bot e messaggi fuori dai server
+    // 1. Controlli base (no bot, deve essere in una guild)
     if (message.author.bot || !message.guild) return;
     
-    // Controlla se siamo in un canale ticket
+    // 2. Verifica se è un canale ticket
     const channel = message.channel;
     if (!channel.name.startsWith("ticket-")) return;
 
-    // Recupera info ticket dal DB
+    // 3. Verifica se l'utente vuole CHIUDERE (Priorità assoluta)
+    // Se tagga il bot e dice "chiudi", l'IA non deve intromettersi, lascia fare a ticketClose.js
+    if (message.mentions.has(client.user) && message.content.toLowerCase().includes("chiudi")) return;
+
+    // 4. Recupera info ticket dal Database
     const ticket = await Ticket.findOne({ channelId: channel.id });
     
-    // Se il ticket non esiste o è GIA' reclamato da uno staffer, l'IA deve stare zitta
+    // Se il ticket non esiste o è già reclamato da uno staffer, l'IA tace.
     if (!ticket || ticket.claimed) return;
 
     const content = message.content.trim();
-    // Ignora messaggi vuoti o comandi e messaggi di chiusura
+    // Ignora comandi che iniziano con prefix
     if (!content || content.startsWith("/") || content.startsWith("!")) return;
-    if (content.toLowerCase().includes("chiudi")) return; // Lascia gestire la chiusura all'altro sistema
 
     await channel.sendTyping();
 
-    // Invoca Gemini Handler
+    // 5. Chiede risposta all'IA
     const contextInfo = `Utente: ${message.author.tag} | Ticket Tipo: ${ticket.type}`;
     const reply = await getSmartReply(message.author.id, content, contextInfo);
 
     // ─────────────────────────────────────────────
-    // 🚨 RILEVAMENTO CHIAMATA STAFF (TRIGGER)
+    // 🚨 RILEVAMENTO RICHIESTA STAFF (TRIGGER)
     // ─────────────────────────────────────────────
     if (reply.includes("TRIGGER_STAFF_CALL")) {
-        // 1. Notifica l'umano specifico
-        const notificationMsg = `🚨 **Richiesta intervento umano!**\nAttenzione <@${HUMAN_STAFF_ID}>, l'utente richiede assistenza diretta.`;
+        
+        // Cerchiamo il canale specifico per le notifiche
+        const alertChannel = client.channels.cache.get(STAFF_ALERT_CHANNEL_ID);
 
-        // 2. Crea il Tasto Rosso per reclamare (usa lo stesso ID gestito da staffClaim.js)
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId(`claim_${channel.id}`) // Questo ID attiva la logica in staffClaim.js
-                .setLabel("👮‍♂️ PRENDI IN CARICO (Staff)")
-                .setStyle(ButtonStyle.Danger) // ROSSO
-        );
+        if (alertChannel) {
+            // Creiamo il bottone per reclamare
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`claim_${channel.id}`) // Collega a staffClaim.js
+                    .setLabel(`👮‍♂️ Reclama Ticket di ${message.author.username}`)
+                    .setStyle(ButtonStyle.Danger) // ROSSO
+            );
 
-        await message.reply({ 
-            content: notificationMsg, 
-            components: [row] 
-        });
+            // Inviamo la notifica nel canale staff dedicato
+            await alertChannel.send({
+                content: `🚨 **RICHIESTA INTERVENTO UMANO**\nL'utente <@${message.author.id}> richiede assistenza nel ticket <#${channel.id}>.`,
+                components: [row]
+            });
 
-        // L'IA esce di scena (non invia altro testo)
+            // Conferma discreta all'utente nel ticket
+            await message.reply("Ho inoltrato la richiesta. Uno staffer arriverà a breve.");
+        } else {
+            console.error(`❌ Canale notifica staff non trovato: ${STAFF_ALERT_CHANNEL_ID}`);
+            await message.reply("Errore nel contattare lo staff. Riprova più tardi.");
+        }
+
+        // L'IA smette di rispondere qui.
         return;
     }
 
     // ─────────────────────────────────────────────
     // 💬 RISPOSTA NORMALE (Umana)
     // ─────────────────────────────────────────────
-    await message.reply({
-      content: reply // Inviamo come testo normale per sembrare più umani, niente embed
-    });
+    // Inviamo la risposta come testo semplice (no Embed, per sembrare umano)
+    await message.reply({ content: reply });
   });
 }
