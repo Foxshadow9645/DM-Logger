@@ -18,7 +18,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // ✅ USA "gemini-pro" (Il modello più compatibile e stabile in assoluto)
 const model = genAI.getGenerativeModel({ 
-    model: "gemini-pro", 
+    model: "gemini-2.5-pro", 
     systemInstruction: {
         role: "system",
         parts: [{ text: [...basePrompts, ...ruleset].join("\n") }]
