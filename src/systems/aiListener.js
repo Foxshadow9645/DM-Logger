@@ -1,8 +1,8 @@
-import { getSmartReply } from "../ai/groqHandler.js"; // Assicurati che punti al handler che stai usando (groq o gemini)
+import { getSmartReply } from "../ai/groqHandler.js"; 
 import Ticket from "../core/models/Ticket.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "discord.js";
 
-// ID del canale dove notificare lo staff
+// ID del canale dove notificare lo staff (preso dal tuo file originale)
 const STAFF_ALERT_CHANNEL_ID = "1430240657179541575";
 
 // 🛡️ LISTA RUOLI STAFF (L'IA deve ignorare chi ha questi ruoli)
@@ -17,15 +17,15 @@ export default function aiListener(client) {
     // 1. Controlli base
     if (message.author.bot || !message.guild) return;
 
-    // 2. 🛑 BLOCCA LO STAFF
+    // 2. 🛑 BLOCCA LO STAFF (Lo staff non triggera l'AI)
     if (message.member && message.member.roles.cache.some(r => STAFF_ROLES.includes(r.id))) return;
     
     // 3. Verifica canale ticket
     const channel = message.channel;
     if (!channel.name.startsWith("ticket-")) return;
 
-    // 4. Se l'utente vuole chiudere, ignora
-    if (message.mentions.has(client.user) && message.content.toLowerCase().includes("chiudi")) return;
+    // 4. Se l'utente usa comandi manuali di chiusura, ignora l'AI (gestito da ticketClose.js)
+    if (message.content.toLowerCase() === "chiudi ticket") return;
 
     // 5. Recupera Ticket DB
     const ticket = await Ticket.findOne({ channelId: channel.id });
@@ -37,23 +37,49 @@ export default function aiListener(client) {
     await channel.sendTyping();
 
     // 6. Genera risposta AI
-    const contextInfo = `Utente: ${message.author.tag} | Ticket Tipo: ${ticket.type}`;
-    const reply = await getSmartReply(message.author.id, content, contextInfo);
+    // Passiamo un contesto vuoto o personalizzato se serve
+    const contextInfo = `Utente: ${message.author.username} | Ticket ID: ${ticket.ticketId}`;
+    let reply = await getSmartReply(message.author.id, content, contextInfo);
 
     // ─────────────────────────────────────────────
-    // 🚨 RILEVAMENTO TRIGGER INTELLIGENTE
+    // 🔒 GESTIONE CHIUSURA AUTOMATICA (Fix richiesto)
+    // ─────────────────────────────────────────────
+    if (reply.includes("TRIGGER_TICKET_CLOSE")) {
+        // Rimuoviamo il trigger dal messaggio visibile
+        const cleanReply = reply.replace("TRIGGER_TICKET_CLOSE", "").trim();
+        
+        await message.reply(cleanReply || "Ricevuto. Chiusura ticket in corso...");
+
+        // Logica di chiusura
+        await Ticket.findOneAndUpdate(
+            { channelId: channel.id },
+            { status: "closed", staffId: null, claimed: false }
+        );
+
+        // Timer di 5 secondi
+        setTimeout(async () => {
+             await channel.delete().catch(() => {});
+        }, 5000);
+        
+        return; // Stop esecuzione
+    }
+
+    // ─────────────────────────────────────────────
+    // 🚨 RILEVAMENTO CHIAMATA STAFF
     // ─────────────────────────────────────────────
     if (reply.includes("TRIGGER_STAFF_CALL")) {
         
-        // Estraiamo il riassunto del problema dopo i due punti
-        // Esempio reply: "TRIGGER_STAFF_CALL: L'utente non riesce a verificare l'account."
         const splitReply = reply.split("TRIGGER_STAFF_CALL:");
-        const problemSummary = splitReply[1] ? splitReply[1].trim() : "L'utente richiede assistenza generica.";
+        const problemSummary = splitReply[1] ? splitReply[1].trim() : "L'utente richiede assistenza generica o Partnership.";
+        
+        // Puliamo la risposta per l'utente (togliamo il trigger e il riassunto tecnico)
+        const userReply = splitReply[0].trim() || "Ho inoltrato la richiesta allo staff.";
+
+        await message.reply(userReply);
 
         const alertChannel = client.channels.cache.get(STAFF_ALERT_CHANNEL_ID);
 
         if (alertChannel) {
-            // Bottone per reclamare
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId(`claim_${channel.id}`)
@@ -61,37 +87,27 @@ export default function aiListener(client) {
                     .setStyle(ButtonStyle.Danger)
             );
 
-            // 📨 EMBED DETTAGLIATO PER LO STAFF
             const alertEmbed = new EmbedBuilder()
-                .setColor("#e74c3c") // Rosso
+                .setColor("#e74c3c")
                 .setTitle("🚨 Richiesta Intervento Staff")
-                .setDescription(`Un utente richiede supporto umano. Ecco il riassunto elaborato dall'IA:`)
+                .setDescription(`L'IA ha scalato il ticket allo staff umano.`)
                 .addFields(
                     { name: "👤 Utente", value: `<@${message.author.id}>`, inline: true },
                     { name: "📍 Canale", value: `<#${channel.id}>`, inline: true },
-                    { name: "⚠️ Problema Rilevato", value: `**${problemSummary}**` }
+                    { name: "⚠️ Motivo", value: `**${problemSummary}**` }
                 )
-                .setTimestamp()
-                .setFooter({ text: "Clicca il bottone per zittire l'AI e intervenire." });
+                .setTimestamp();
 
             await alertChannel.send({
-                content: `<@&1429034166229663826>`, // Tagga un ruolo staff se vuoi (opzionale) o togli questa riga
+                content: `<@&1429034166229663826>`, // Ping ruolo
                 embeds: [alertEmbed],
                 components: [row]
             });
-
-            // ✅ Risposta all'utente (senza far vedere il codice interno)
-            await message.reply({ 
-                content: "Ho inoltrato la tua richiesta allo staff includendo i dettagli del problema. Un operatore arriverà a breve." 
-            });
-
-        } else {
-            await message.reply("Errore di contatto staff. Riprova più tardi.");
         }
-        return; // Stop, non inviare il messaggio "TRIGGER..." in chat
+        return; 
     }
 
-    // Risposta normale (se non chiama lo staff, o se sta ancora chiedendo info)
+    // Risposta normale
     await message.reply({ content: reply });
   });
 }
