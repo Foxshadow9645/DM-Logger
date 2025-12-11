@@ -19,7 +19,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // 🔥 CORREZIONE QUI: Usiamo 'gemini-1.5-flash-latest' invece di 'gemini-1.5-flash'
 const model = genAI.getGenerativeModel({ 
-    model: "gemini-1.5-flash-latest", 
+    model: "gemini-1.5-flash", 
     systemInstruction: {
         role: "system",
         parts: [{ text: [...basePrompts, ...ruleset].join("\n") }]
