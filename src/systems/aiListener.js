@@ -3,7 +3,7 @@ import Ticket from "../core/models/Ticket.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
 // ID del CANALE dove mandare la notifica staff
-const STAFF_ALERT_CHANNEL_ID = "1197583344356053083";
+const STAFF_ALERT_CHANNEL_ID = "1430240657179541575";
 
 export default function aiListener(client) {
   client.on("messageCreate", async (message) => {
