@@ -16,8 +16,7 @@ const ruleset = JSON.parse(fs.readFileSync(rulesetPath, "utf8"));
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ✅ USA "gemini-1.5-flash" (Senza suffissi strani)
-// Se questo fallisce ancora, prova "gemini-pro" (che è la versione 1.0, vecchia ma indistruttibile)
+// ✅ USA "gemini-pro" (Il modello più compatibile e stabile in assoluto)
 const model = genAI.getGenerativeModel({ 
     model: "gemini-pro", 
     systemInstruction: {
@@ -43,6 +42,7 @@ export async function getSmartReply(userId, messageContent, contextInfo = "") {
     let memoryDoc = await Memory.findOne({ key: userId });
     if (!memoryDoc) memoryDoc = new Memory({ key: userId, history: [] });
 
+    // Adattamento storia per Gemini Pro (che è più schizzinoso sui ruoli)
     const history = memoryDoc.history.map(m => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }]
@@ -67,14 +67,11 @@ export async function getSmartReply(userId, messageContent, contextInfo = "") {
     return replyText;
 
   } catch (error) {
-    // Gestione Errori Specifica
-    if (error.status === 429) return "⚠️ *Troppe richieste. I miei circuiti si stanno raffreddando (limitazione Google).*";
-    if (error.status === 404) {
-        console.error("❌ MODELLO NON TROVATO. Prova a cambiare 'gemini-1.5-flash' in 'gemini-pro' nel file geminiHandler.js");
-        return "⚠️ *Errore configurazione AI: Modello non disponibile.*";
-    }
-    
     console.error("❌ Errore Gemini:", error);
+    
+    if (error.status === 404) return "⚠️ *Errore modello non trovato. Controlla i log per la lista dei modelli.*";
+    if (error.status === 429) return "⚠️ *Troppe richieste. Riprova tra un attimo.*";
+    
     return "⚠️ *Errore di comunicazione con il nodo neurale AI.*";
   }
 }
