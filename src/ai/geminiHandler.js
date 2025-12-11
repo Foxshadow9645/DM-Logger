@@ -5,7 +5,7 @@ import Memory from "../core/models/Memory.js";
 import dotenv from "dotenv";
 dotenv.config();
 
-// Carichiamo le configurazioni JSON (Training e Script)
+// Carichiamo le configurazioni JSON
 const scriptsPath = path.resolve("src/ai/scripts.json");
 const scripts = JSON.parse(fs.readFileSync(scriptsPath, "utf8"));
 
@@ -17,9 +17,9 @@ const ruleset = JSON.parse(fs.readFileSync(rulesetPath, "utf8"));
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// 🔥 CORREZIONE QUI: Usiamo 'gemini-1.5-flash-latest' invece di 'gemini-1.5-flash'
+// ✅ USA QUESTA VERSIONE SPECIFICA (Più stabile e con limiti più alti)
 const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.0-flash", 
+    model: "gemini-1.5-flash-002", 
     systemInstruction: {
         role: "system",
         parts: [{ text: [...basePrompts, ...ruleset].join("\n") }]
@@ -33,7 +33,7 @@ export async function getSmartReply(userId, messageContent, contextInfo = "") {
   try {
     const lowerMsg = messageContent.toLowerCase();
 
-    // 1️⃣ CONTROLLO SCRIPT
+    // 1️⃣ CONTROLLO SCRIPT (Risparmia chiamate AI)
     for (const [key, data] of Object.entries(scripts)) {
       if (data.keywords.some(k => lowerMsg.includes(k))) {
         await saveToMemory(userId, "user", messageContent);
@@ -79,8 +79,13 @@ export async function getSmartReply(userId, messageContent, contextInfo = "") {
     return replyText;
 
   } catch (error) {
+    // Gestione specifica dell'errore 429 (Troppe richieste)
+    if (error.status === 429 || (error.message && error.message.includes("429"))) {
+        console.warn("⚠️ Quota Gemini superata (429).");
+        return "⚠️ *I miei circuiti sono sovraccarichi. Per favore, attendi un minuto prima di farmi un'altra domanda.*";
+    }
+    
     console.error("❌ Errore Gemini Handler:", error);
-    // Messaggio di fallback nel caso il modello fallisca ancora
     return "⚠️ *Errore di comunicazione con il nodo neurale AI. Riprova più tardi.*";
   }
 }
