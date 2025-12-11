@@ -5,7 +5,6 @@ import Memory from "../core/models/Memory.js";
 import dotenv from "dotenv";
 dotenv.config();
 
-// Carichiamo le configurazioni JSON
 const scriptsPath = path.resolve("src/ai/scripts.json");
 const scripts = JSON.parse(fs.readFileSync(scriptsPath, "utf8"));
 
@@ -17,23 +16,21 @@ const ruleset = JSON.parse(fs.readFileSync(rulesetPath, "utf8"));
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ✅ USA QUESTA VERSIONE SPECIFICA (Più stabile e con limiti più alti)
+// ✅ USA "gemini-1.5-flash" (Senza suffissi strani)
+// Se questo fallisce ancora, prova "gemini-pro" (che è la versione 1.0, vecchia ma indistruttibile)
 const model = genAI.getGenerativeModel({ 
-    model: "gemini-1.5-flash-002", 
+    model: "gemini-1.5-flash", 
     systemInstruction: {
         role: "system",
         parts: [{ text: [...basePrompts, ...ruleset].join("\n") }]
     }
 });
 
-/**
- * Gestisce la risposta intelligente
- */
 export async function getSmartReply(userId, messageContent, contextInfo = "") {
   try {
     const lowerMsg = messageContent.toLowerCase();
 
-    // 1️⃣ CONTROLLO SCRIPT (Risparmia chiamate AI)
+    // 1️⃣ Script statici
     for (const [key, data] of Object.entries(scripts)) {
       if (data.keywords.some(k => lowerMsg.includes(k))) {
         await saveToMemory(userId, "user", messageContent);
@@ -42,51 +39,43 @@ export async function getSmartReply(userId, messageContent, contextInfo = "") {
       }
     }
 
-    // 2️⃣ RECUPERO MEMORIA
+    // 2️⃣ Memoria
     let memoryDoc = await Memory.findOne({ key: userId });
-    if (!memoryDoc) {
-      memoryDoc = new Memory({ key: userId, history: [] });
-    }
+    if (!memoryDoc) memoryDoc = new Memory({ key: userId, history: [] });
 
     const history = memoryDoc.history.map(m => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }]
     }));
 
-    // 3️⃣ GENERAZIONE RISPOSTA AI
+    // 3️⃣ Generazione
     const chat = model.startChat({
       history: history,
-      generationConfig: {
-        maxOutputTokens: 300,
-      },
+      generationConfig: { maxOutputTokens: 400 },
     });
 
     const prompt = contextInfo ? `[Info Sistema: ${contextInfo}] ${messageContent}` : messageContent;
-
     const result = await chat.sendMessage(prompt);
     const replyText = result.response.text();
 
-    // 4️⃣ SALVATAGGIO
+    // 4️⃣ Salvataggio
     memoryDoc.history.push({ role: "user", content: messageContent });
     memoryDoc.history.push({ role: "assistant", content: replyText });
-
-    if (memoryDoc.history.length > 20) {
-      memoryDoc.history = memoryDoc.history.slice(-20);
-    }
+    if (memoryDoc.history.length > 20) memoryDoc.history = memoryDoc.history.slice(-20);
     
     await memoryDoc.save();
-
     return replyText;
 
   } catch (error) {
-    // Gestione specifica dell'errore 429 (Troppe richieste)
-    if (error.status === 429 || (error.message && error.message.includes("429"))) {
-        console.warn("⚠️ Quota Gemini superata (429).");
-        return "⚠️ *I miei circuiti sono sovraccarichi. Per favore, attendi un minuto prima di farmi un'altra domanda.*";
+    // Gestione Errori Specifica
+    if (error.status === 429) return "⚠️ *Troppe richieste. I miei circuiti si stanno raffreddando (limitazione Google).*";
+    if (error.status === 404) {
+        console.error("❌ MODELLO NON TROVATO. Prova a cambiare 'gemini-1.5-flash' in 'gemini-pro' nel file geminiHandler.js");
+        return "⚠️ *Errore configurazione AI: Modello non disponibile.*";
     }
     
-    console.error("❌ Errore Gemini Handler:", error);
-    return "⚠️ *Errore di comunicazione con il nodo neurale AI. Riprova più tardi.*";
+    console.error("❌ Errore Gemini:", error);
+    return "⚠️ *Errore di comunicazione con il nodo neurale AI.*";
   }
 }
 
