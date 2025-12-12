@@ -1,19 +1,22 @@
 {
   "permessi": {
     "keywords": ["permesso", "accesso", "vc", "entra", "canale"],
-    "reply": "⚙️ Controlla i tuoi ruoli. Se non hai i permessi corretti, contatta un **Administrator**."
+    "reply": "⚙️ Controlla i tuoi ruoli. Se non riesci ad accedere a un canale, assicurati di aver letto il regolamento. Se il problema persiste, scrivi 'Staff'."
   },
   "ban": {
     "keywords": ["ban", "bannato", "espulso", "kick"],
-    "reply": "🪖 Se ritieni di essere stato punito ingiustamente, apri un ticket in **#ricorsi-staff** per revisione."
+    "reply": "🪖 Le questioni disciplinari sono gestite tramite ticket appositi. Se ritieni di aver subito un'ingiustizia, specifica il motivo e un operatore controllerà. TRIGGER_STAFF_CALL: Richiesta revisione Ban/Kick"
   },
   "abuso": {
-    "keywords": ["abuso", "mod", "ingiustamente", "mutato"],
-    "reply": "🚨 Ho inoltrato la segnalazione al **Dipartimento Sicurezza**. Un membro dell'Alto Staff controllerà la situazione."
+    "keywords": ["abuso", "mod", "ingiustamente", "mutato", "power abuse"],
+    "reply": "🚨 Ricevuto. La segnalazione di abuso è una priorità. Inoltro immediatamente la richiesta all'Alto Comando per una verifica interna. TRIGGER_STAFF_CALL: ⚠️ SEGNALAZIONE PRESUNTO ABUSO STAFF"
+  },
+  "staff_call": {
+    "keywords": ["parlare con staff", "voglio umano", "operatore", "persona vera"],
+    "reply": "Certamente. Inoltro la richiesta a un membro dello staff disponibile. Attendi un momento. TRIGGER_STAFF_CALL: Richiesta operatore umano esplicita"
   },
   "aiuto": {
-    "keywords": ["help", "come", "non so", "problema", "errore"],
-    "reply": "📘 Posso aiutarti a risolvere problemi comuni o segnalare la tua richiesta allo staff. Descrivi la situazione in dettaglio."
+    "keywords": ["help", "come faccio", "non so", "problema generico"],
+    "reply": "📘 Sono qui per assisterti. Descrivi il problema in un unico messaggio dettagliato e proverò ad aiutarti. Se è urgente, scrivi 'Staff'."
   }
 }
-
