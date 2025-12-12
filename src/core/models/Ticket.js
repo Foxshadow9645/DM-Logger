@@ -6,10 +6,13 @@ const ticketSchema = new mongoose.Schema({
   userId: { type: String, required: true },
   type: { type: String, required: true }, // High Staff, Partnership, Assistenza
   status: { type: String, default: "open" },
-  staffAssigned: String,
+  
+  // 👇 QUESTO CAMPO MANCAVA! Senza di lui il bot non ricorda se è reclamato
+  claimed: { type: Boolean, default: false }, 
+  
+  staffId: String, // ID dello staff che lo ha reclamato
   createdAt: { type: Date, default: Date.now },
   closedAt: Date
 });
 
 export default mongoose.model("Ticket", ticketSchema);
-
