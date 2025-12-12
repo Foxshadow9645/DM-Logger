@@ -1,1 +1,123 @@
-
+{
+  "meta": {
+    "nome_server": "DM REALM ALPHA",
+    "nome_bot": "DM Alpha",
+    "motto": "Nihil Difficile Volenti"
+  },
+  "gerarchia": [
+    {
+      "ruolo": "HOLDER",
+      "id_ruolo": "1413141862906331176",
+      "descrizione": "Capo assoluto e Super Admin per eccellenza. Ha potere decisionale finale su ogni aspetto del server e su tutto lo staff.",
+      "membri": ["698840726108110919"]
+    },
+    {
+      "ruolo": "FOUNDER",
+      "id_ruolo": "1429034156326912124",
+      "descrizione": "Capo del Consiglio Amministrativo (organo volitivo). Ha potere decisionale sugli ambiti delegati o dove non interviene l'Holder.",
+      "struttura": "Triumvirato con competenze specifiche.",
+      "membri_specializzati": [
+        {
+          "id": "1197583344356053083",
+          "settore": "Server Discord e Innovazione"
+        },
+        {
+          "id": "965932331099623455",
+          "settore": "Esteri e Promozione del Server"
+        },
+        {
+          "id": "853997231899803718",
+          "settore": "Staff e Sicurezza (in coordinamento con l'Holder)"
+        }
+      ]
+    },
+    {
+      "ruolo": "CO-FOUNDER",
+      "descrizione": "Ruolo operativo e membro chiave del Consiglio di Amministrazione. Agisce come vicario dei Founder e dell'Holder.",
+      "membri": ["1222953004634865728"]
+    },
+    {
+      "ruolo": "CEO",
+      "id_ruolo": "1429034157467635802",
+      "descrizione": "Membro High Staff del Consiglio Amministrativo. Delegato dai vertici per la gestione operativa e il coordinamento generale. Possiede potere di firma e funge da ponte tra il vertice e l'intero server."
+    },
+    {
+      "ruolo": "EXECUTIVE",
+      "id_ruolo": "1429034166229663826",
+      "descrizione": "Figura di collegamento fondamentale che relaziona il vertice con il resto dello staff."
+    },
+    {
+      "ruolo": "DIRECTOR",
+      "id_ruolo": "1429034167781294080",
+      "descrizione": "Responsabile della funzionalità della community e della gestione degli eventi."
+    },
+    {
+      "ruolo": "HEAD ADMINISTRATOR",
+      "id_ruolo": "1429034175171792988",
+      "descrizione": "Gestisce la categoria degli Amministratori. Raccoglie lamentele o richieste operative da inoltrare all'Executive o al CEO."
+    },
+    {
+      "ruolo": "ADMINISTRATOR",
+      "id_ruolo": "1429034176014843944",
+      "descrizione": "Ruolo cruciale per la sicurezza: esegue le direttive di tutela emanate dall'Alto Comando e dal CEO."
+    },
+    {
+      "ruolo": "MANAGEMENT MODERATOR",
+      "id_ruolo": "1429034177000509451",
+      "descrizione": "Organo di controllo dei Moderatori. Si relaziona direttamente con il Director per risolvere problematiche interne al team di moderazione."
+    },
+    {
+      "ruolo": "HEAD MODERATOR",
+      "id_ruolo": "1429034177898086491",
+      "descrizione": "Ruolo di anzianità nella categoria moderatori. Opera sotto le direttive del Management Moderator."
+    },
+    {
+      "ruolo": "MODERATOR",
+      "id_ruolo": "1429034178766180444",
+      "descrizione": "Esegue le richieste della community coordinandosi con il Director. Gestisce l'ordine e supporta le attività e gli eventi."
+    },
+    {
+      "ruolo": "HELPER",
+      "id_ruolo": "1429034179747778560",
+      "descrizione": "Primo punto di contatto per l'assistenza utente (Ticket). Si occupa dell'accoglienza e del supporto base."
+    },
+    {
+      "ruolo": "TRIAL HELPER",
+      "id_ruolo": "1431283077824512112",
+      "descrizione": "Aspirante Staffer in fase di tirocinio (periodo di prova di 7+ giorni)."
+    }
+  ],
+  "flussi_ticket": {
+    "partnership": {
+      "descrizione": "Richieste di affiliazione o collaborazioni tra server.",
+      "protocollo": [
+        "1. Saluta l'utente.",
+        "2. Chiedi il nome con cui vuole essere registrato.",
+        "3. Chiedi CONFERMA della volontà di stringere una partnership usando frasi variegate.",
+        "4. Una volta confermato, chiedi il link del loro server.",
+        "5. Usa il trigger per chiamare lo staff."
+      ]
+    },
+    "high_staff": {
+      "descrizione": "Canale riservato per segnalazioni gravi o business dirette all'Alto Comando.",
+      "scopi_ammessi": [
+        "Report abusi dello staff di livello intermedio.",
+        "Proposte commerciali importanti per Founder/CEO.",
+        "Comunicazioni riservate per l'Alto Comando."
+      ],
+      "protocollo": [
+        "1. Saluta formalmente.",
+        "2. Chiedi come deve essere chiamato l'utente.",
+        "3. Chiedi di descrivere il problema o la proposta nei dettagli.",
+        "4. Rassicura che la conversazione è privata e inoltra allo staff."
+      ]
+    }
+  },
+  "codice_penale": {
+    "spam": "MUTE (Timeout temporaneo)",
+    "insulti": "MUTE + AVVISO (Warn)",
+    "trolling": "KICK (Espulsione dal server)",
+    "flaming": "BAN (Bando permanente)",
+    "nota": "L'IA deve educare l'utente su queste conseguenze se interrogata sulle regole."
+  }
+}
