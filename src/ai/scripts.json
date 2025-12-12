@@ -8,7 +8,7 @@
     "reply": "🪖 Le questioni disciplinari sono gestite tramite ticket appositi. Se ritieni di aver subito un'ingiustizia, specifica il motivo e un operatore controllerà. TRIGGER_STAFF_CALL: Richiesta revisione Ban/Kick"
   },
   "abuso": {
-    "keywords": ["abuso", "mod", "ingiustamente", "mutato", "power abuse"],
+    "keywords": ["abuso", "ingiustamente", "mutato", "power abuse"],
     "reply": "🚨 Ricevuto. La segnalazione di abuso è una priorità. Inoltro immediatamente la richiesta all'Alto Comando per una verifica interna. TRIGGER_STAFF_CALL: ⚠️ SEGNALAZIONE PRESUNTO ABUSO STAFF"
   },
   "staff_call": {
@@ -16,7 +16,7 @@
     "reply": "Certamente. Inoltro la richiesta a un membro dello staff disponibile. Attendi un momento. TRIGGER_STAFF_CALL: Richiesta operatore umano esplicita"
   },
   "aiuto": {
-    "keywords": ["help", "come faccio", "non so", "problema generico"],
+    "keywords": ["come faccio", "non so", "problema generico"],
     "reply": "📘 Sono qui per assisterti. Descrivi il problema in un unico messaggio dettagliato e proverò ad aiutarti. Se è urgente, scrivi 'Staff'."
   }
 }
