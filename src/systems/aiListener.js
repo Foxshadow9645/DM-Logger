@@ -3,6 +3,7 @@ import Ticket from "../core/models/Ticket.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "discord.js";
 
 const STAFF_ALERT_CHANNEL_ID = "1430240657179541575"; // Canale Staff
+
 // 🛡️ LISTA RUOLI STAFF (L'IA deve ignorare chi ha questi ruoli)
 const STAFF_ROLES = [
   "1429034166229663826","1429034167781294080","1429034175171792988",
@@ -19,7 +20,6 @@ export default function aiListener(client) {
     const channel = message.channel;
     if (!channel.name.startsWith("ticket-")) return;
 
-    // Gestione comandi manuali di chiusura
     if (message.content.toLowerCase() === "chiudi ticket") return;
 
     // Recupera Ticket DB
@@ -32,20 +32,21 @@ export default function aiListener(client) {
     await channel.sendTyping();
 
     // ─────────────────────────────────────────────
-    // 🧠 COSTRUZIONE CONTESTO AVANZATO
+    // 🧠 COSTRUZIONE CONTESTO (METADATA)
     // ─────────────────────────────────────────────
-    // Passiamo all'AI il motivo per cui il ticket è stato aperto
+    // Usiamo un formato esplicito che il Ruleset riconoscerà come "DA NON LEGGERE"
     const contextInfo = `
-    [DATI UTENTE]
-    - Nome Discord: ${message.author.username}
-    - ID Ufficiale: ${message.author.id} (Usa questo solo per i report allo staff)
-    
-    [STATO TICKET]
-    - Categoria scelta dall'utente: ${ticket.type.toUpperCase()} (Es. Partnership, Assistenza, High Staff)
-    - Obiettivo: L'utente ha cliccato il bottone relativo a questa categoria.
+    [[SYSTEM_METADATA_DO_NOT_REPEAT]]
+    - USER_ID_TAG: <@${message.author.id}>
+    - TICKET_CATEGORY: ${ticket.type.toUpperCase()}
+    - GOAL: L'utente ha GIA' scelto la categoria ${ticket.type}. Non chiederla. Chiedi conferma e procedi.
+    [[END_METADATA]]
     `;
 
     let reply = await getSmartReply(message.author.id, content, contextInfo);
+
+    // 🛡️ FILTRO DI SICUREZZA: Rimuove eventuali "Info Sistema" se l'AI impazzisce e le ripete
+    reply = reply.replace(/\[\[.*?\]\]/gs, "").replace(/\[Info Sistema.*?\]/gs, "").trim();
 
     // ─────────────────────────────────────────────
     // 🔒 CHIUSURA TICKET
@@ -65,7 +66,7 @@ export default function aiListener(client) {
     if (reply.includes("TRIGGER_STAFF_CALL")) {
         const splitReply = reply.split("TRIGGER_STAFF_CALL:");
         const problemSummary = splitReply[1] ? splitReply[1].trim() : "Richiesta intervento manuale.";
-        const userReply = splitReply[0].trim() || "Inoltro la richiesta allo staff.";
+        const userReply = splitReply[0].trim() || "Inoltro subito la richiesta allo staff.";
 
         await message.reply(userReply);
 
@@ -75,15 +76,14 @@ export default function aiListener(client) {
                 new ButtonBuilder().setCustomId(`claim_${channel.id}`).setLabel(`👮‍♂️ Reclama Ticket`).setStyle(ButtonStyle.Danger)
             );
 
-            // QUI usiamo il TAG dell'utente (<@ID>) come richiesto, non il nome
             const alertEmbed = new EmbedBuilder()
                 .setColor("#e74c3c")
                 .setTitle("🚨 Richiesta Intervento Staff")
-                .setDescription(`L'IA ha scalato il ticket allo staff umano.`)
+                .setDescription(`L'IA ha scalato il ticket.`)
                 .addFields(
-                    { name: "👤 Utente (Tag)", value: `<@${message.author.id}>`, inline: true }, // <--- TAG UFFICIALE
+                    { name: "👤 Utente", value: `<@${message.author.id}>`, inline: true }, // Qui usiamo il TAG reale
                     { name: "📍 Categoria", value: `**${ticket.type}**`, inline: true },
-                    { name: "⚠️ Riepilogo IA", value: `${problemSummary}` }
+                    { name: "⚠️ Problema", value: `${problemSummary}` }
                 )
                 .setTimestamp();
 
