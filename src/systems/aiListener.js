@@ -3,7 +3,7 @@ import Ticket from "../core/models/Ticket.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "discord.js";
 
 // 🔴 CANALE TICKET ALERT (Richieste Operatore)
-const TICKET_ALERT_CHANNEL = "1435294808045256704"; 
+const TICKET_ALERT_CHANNEL = "1435285738185953390"; 
 
 // Ruoli Staff & Tag
 const ROLES = {
