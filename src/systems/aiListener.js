@@ -3,11 +3,31 @@ import Ticket from "../core/models/Ticket.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "discord.js";
 
 const STAFF_ALERT_CHANNEL_ID = "1435294808045256704"; // Canale avvisi staff
-// RUOLI STAFF (Ignorati dall'IA)
+
+// ─────────────────────────────────────────────
+// 🛡️ LISTA RUOLI STAFF (L'IA li ignora)
+// ─────────────────────────────────────────────
 const STAFF_ROLES = [
-  "1429034166229663826","1429034167781294080","1429034175171792988",
-  "1429034176014843944","1429034177000509451","1429034177898086491",
-  "1429034178766180444","1429034179747778560","1431283077824512112"
+  // 👑 ALTO COMANDO
+  "1413141862906331176", // Holder
+  "1429034156326912124", // Founder
+  "1429034157467635802", // CEO
+  "1429034166229663826", // Executive
+  "1429034167781294080", // Director
+  
+  // 🤝 PARTNERSHIP (Nuovo Ruolo inserito)
+  "1434591845370957875", // Partnership Manager / Role
+
+  // 🛡️ AMMINISTRAZIONE & MODERAZIONE
+  "1429034175171792988", // Head Admin
+  "1429034176014843944", // Administrator
+  "1429034177000509451", // Management Moderator
+  "1429034177898086491", // Head Moderator
+  "1429034178766180444", // Moderator
+
+  // ⛑️ SUPPORTO
+  "1429034179747778560", // Helper
+  "1431283077824512112"  // Trial Helper
 ];
 
 export default function aiListener(client) {
@@ -15,7 +35,7 @@ export default function aiListener(client) {
     // 1. Controlli Preliminari
     if (message.author.bot || !message.guild) return;
     
-    // Se scrive uno staff, l'IA non risponde mai
+    // 🛑 Se scrive uno staff (qualcuno con uno dei ruoli sopra), l'IA non risponde mai
     if (message.member && message.member.roles.cache.some(r => STAFF_ROLES.includes(r.id))) return;
     
     const channel = message.channel;
