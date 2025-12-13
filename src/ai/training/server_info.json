@@ -1,6 +1,6 @@
 {
   "meta": {
-    "nome_server": "DM REALM ALPHA",
+    "nome_server": "DM Realm Italy",
     "nome_bot": "DM Alpha",
     "motto": "Nihil Difficile Volenti"
   },
@@ -8,13 +8,13 @@
     {
       "ruolo": "HOLDER",
       "id_ruolo": "1413141862906331176",
-      "descrizione": "Capo assoluto e Super Admin per eccellenza. Ha potere decisionale finale su ogni aspetto del server e su tutto lo staff.",
+      "descrizione": "Capo assoluto e Super Admin per eccellenza.",
       "membri": ["698840726108110919"]
     },
     {
       "ruolo": "FOUNDER",
       "id_ruolo": "1429034156326912124",
-      "descrizione": "Capo del Consiglio Amministrativo (organo volitivo).",
+      "descrizione": "Capo del Consiglio Amministrativo.",
       "membri_specializzati": [
         {
           "id": "1197583344356053083",
@@ -32,7 +32,7 @@
     },
     {
       "ruolo": "CO-FOUNDER",
-      "descrizione": "Ruolo operativo e membro chiave del Consiglio di Amministrazione. Agisce come vicario dei Founder e dell'Holder.",
+      "descrizione": "Vicario dei Founder.",
       "membri": ["1222953004634865728"]
     },
     {
@@ -86,32 +86,51 @@
       "descrizione": "Aspirante Staffer in fase di tirocinio."
     }
   ],
+  "mappa_server": {
+    "importanti": {
+      "regolamento": "1429034256495280138",
+      "annunci": "1429034253152292954",
+      "benvenuto": "1429034250837032990",
+      "bot_commands": "1429034262027571290"
+    },
+    "community": {
+      "chat_generale": "1429034258785374298",
+      "media": "1429034259880087594",
+      "music_cmd": "1429034275868774480"
+    },
+    "intrattenimento": {
+      "casino": "1429034268633337868",
+      "akinator": "1429034263520612424",
+      "pokemon": "1429034271062102079"
+    },
+    "staff_zone": {
+      "chat_staff": "1430240657179541575",
+      "meeting": "1430244091190317181",
+      "ticket_logs": "1435294808045256704",
+      "moderation_logs": "1429102454766698556"
+    }
+  },
   "flussi_ticket": {
     "partnership": {
-      "descrizione": "Richieste di affiliazione o collaborazioni tra server.",
+      "descrizione": "Richieste di affiliazione.",
       "protocollo": [
-        "1. Saluta l'utente.",
-        "2. Chiedi il nome con cui vuole essere registrato.",
-        "3. Chiedi CONFERMA della volontà di stringere una partnership.",
-        "4. Una volta confermato, chiedi il link del loro server.",
-        "5. Usa il trigger staff."
+        "1. Saluta e chiedi il nome.",
+        "2. Chiedi il link del server.",
+        "3. Usa il trigger staff."
       ]
     },
     "high_staff": {
-      "descrizione": "Canale riservato per segnalazioni gravi o business dirette all'Alto Comando.",
+      "descrizione": "Canale riservato High Command.",
       "protocollo": [
         "1. Saluta formalmente.",
-        "2. Chiedi come deve essere chiamato l'utente.",
-        "3. Chiedi di descrivere il problema o la proposta nei dettagli.",
-        "4. Rassicura che la conversazione è privata e inoltra allo staff."
+        "2. Chiedi dettagli sulla richiesta.",
+        "3. Inoltra allo staff."
       ]
     }
   },
   "codice_penale": {
-    "spam": "MUTE (Timeout temporaneo)",
-    "insulti": "MUTE + AVVISO (Warn)",
-    "trolling": "KICK (Espulsione dal server)",
-    "flaming": "BAN (Bando permanente)",
-    "nota": "L'IA deve educare l'utente su queste conseguenze se interrogata sulle regole."
+    "spam": "Mute",
+    "insulti": "Warn/Mute",
+    "raid": "Ban"
   }
 }
