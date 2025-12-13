@@ -2,7 +2,7 @@ import { ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, Butt
 import Ticket from "../core/models/Ticket.js";
 
 // 🟢 CANALE TICKET LOG (Dove finiscono i ticket appena aperti)
-const TICKET_LOG_CHANNEL = "1435285738185953390"; 
+const TICKET_LOG_CHANNEL = "1435294808045256704"; 
 
 // ─────────────────────────────────────────────
 // 👑 CONFIGURAZIONE RUOLI
