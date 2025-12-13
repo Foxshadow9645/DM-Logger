@@ -2,7 +2,7 @@ import { getSmartReply } from "../ai/groqHandler.js";
 import Ticket from "../core/models/Ticket.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "discord.js";
 
-const STAFF_ALERT_CHANNEL_ID = "1430240657179541575"; // Canale avvisi staff
+const STAFF_ALERT_CHANNEL_ID = "1435294808045256704"; // Canale avvisi staff
 // RUOLI STAFF (Ignorati dall'IA)
 const STAFF_ROLES = [
   "1429034166229663826","1429034167781294080","1429034175171792988",
