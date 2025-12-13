@@ -8,13 +8,13 @@
     {
       "ruolo": "HOLDER",
       "id_ruolo": "1413141862906331176",
-      "descrizione": "Capo assoluto e Super Admin per eccellenza.",
-      "membri": ["698840726108110919"]
+      "descrizione": "Capo assoluto e Super Admin per eccellenza. Ha potere decisionale finale su ogni aspetto del server e su tutto lo staff.",
+      "membri": ["965932331099623455"]
     },
     {
       "ruolo": "FOUNDER",
       "id_ruolo": "1429034156326912124",
-      "descrizione": "Capo del Consiglio Amministrativo.",
+      "descrizione": "Capo del Consiglio Amministrativo (organo volitivo).",
       "membri_specializzati": [
         {
           "id": "1197583344356053083",
@@ -32,36 +32,86 @@
     },
     {
       "ruolo": "CO-FOUNDER",
-      "descrizione": "Vicario dei Founder e dell'Holder.",
+      "descrizione": "Ruolo operativo e membro chiave del Consiglio di Amministrazione. Agisce come vicario dei Founder e dell'Holder.",
       "membri": ["1222953004634865728"]
     },
     {
       "ruolo": "CEO",
       "id_ruolo": "1429034157467635802",
-      "descrizione": "Membro High Staff, gestione operativa."
+      "descrizione": "Membro High Staff del Consiglio Amministrativo. Delegato dai vertici per la gestione operativa."
+    },
+    {
+      "ruolo": "EXECUTIVE",
+      "id_ruolo": "1429034166229663826",
+      "descrizione": "Figura di collegamento fondamentale che relaziona il vertice con il resto dello staff."
+    },
+    {
+      "ruolo": "DIRECTOR",
+      "id_ruolo": "1429034167781294080",
+      "descrizione": "Responsabile della funzionalità della community e della gestione degli eventi."
+    },
+    {
+      "ruolo": "HEAD ADMINISTRATOR",
+      "id_ruolo": "1429034175171792988",
+      "descrizione": "Gestisce la categoria degli Amministratori. Raccoglie lamentele o richieste operative."
+    },
+    {
+      "ruolo": "ADMINISTRATOR",
+      "id_ruolo": "1429034176014843944",
+      "descrizione": "Ruolo cruciale per la sicurezza: esegue le direttive di tutela emanate dall'Alto Comando."
+    },
+    {
+      "ruolo": "MANAGEMENT MODERATOR",
+      "id_ruolo": "1429034177000509451",
+      "descrizione": "Organo di controllo dei Moderatori. Si relaziona con il Director per le problematiche del team."
+    },
+    {
+      "ruolo": "HEAD MODERATOR",
+      "id_ruolo": "1429034177898086491",
+      "descrizione": "Ruolo di anzianità nella categoria moderatori."
+    },
+    {
+      "ruolo": "MODERATOR",
+      "id_ruolo": "1429034178766180444",
+      "descrizione": "Esegue le richieste della community coordinandosi con il Director. Gestisce l'ordine."
+    },
+    {
+      "ruolo": "HELPER",
+      "id_ruolo": "1429034179747778560",
+      "descrizione": "Primo punto di contatto per l'assistenza utente (Ticket)."
+    },
+    {
+      "ruolo": "TRIAL HELPER",
+      "id_ruolo": "1431283077824512112",
+      "descrizione": "Aspirante Staffer in fase di tirocinio."
     }
   ],
   "flussi_ticket": {
     "partnership": {
-      "descrizione": "Richieste di affiliazione.",
+      "descrizione": "Richieste di affiliazione o collaborazioni tra server.",
       "protocollo": [
-        "1. Saluta e chiedi il nome.",
-        "2. Chiedi il link del server.",
-        "3. Usa il trigger staff."
+        "1. Saluta l'utente.",
+        "2. Chiedi il nome con cui vuole essere registrato.",
+        "3. Chiedi CONFERMA della volontà di stringere una partnership.",
+        "4. Una volta confermato, chiedi il link del loro server.",
+        "5. Usa il trigger staff."
       ]
     },
     "high_staff": {
-      "descrizione": "Canale riservato High Command.",
+      "descrizione": "Canale riservato per segnalazioni gravi o business dirette all'Alto Comando.",
       "protocollo": [
         "1. Saluta formalmente.",
-        "2. Chiedi dettagli sulla richiesta.",
-        "3. Inoltra allo staff."
+        "2. Chiedi come deve essere chiamato l'utente.",
+        "3. Chiedi di descrivere il problema o la proposta nei dettagli.",
+        "4. Rassicura che la conversazione è privata e inoltra allo staff."
       ]
     }
   },
   "codice_penale": {
-    "spam": "Mute",
-    "insulti": "Warn/Mute",
-    "raid": "Ban"
+    "spam": "MUTE (Timeout temporaneo)",
+    "insulti": "MUTE + AVVISO (Warn)",
+    "trolling": "KICK (Espulsione dal server)",
+    "flaming": "BAN (Bando permanente)",
+    "nota": "L'IA deve educare l'utente su queste conseguenze se interrogata sulle regole."
   }
 }
