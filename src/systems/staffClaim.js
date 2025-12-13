@@ -1,9 +1,21 @@
 import Ticket from "../core/models/Ticket.js";
+import { EmbedBuilder } from "discord.js";
 
-const STAFF_ROLES = [
-  "1429034166229663826","1429034167781294080","1429034175171792988",
-  "1429034176014843944","1429034177000509451","1429034177898086491",
-  "1429034178766180444","1429034179747778560","1431283077824512112"
+// Lista di TUTTI i ruoli autorizzati a reclamare
+const ALLOWED_CLAIM_ROLES = [
+  "1413141862906331176", // Holder
+  "1429034156326912124", // Founder
+  "1429034157467635802", // CEO
+  "1429034166229663826", // Executive
+  "1429034167781294080", // Director
+  "1434591845370957875", // PARTNERSHIP (Ora può reclamare!)
+  "1429034175171792988", // Head Admin
+  "1429034176014843944", // Admin
+  "1429034177000509451", // Management Mod
+  "1429034177898086491", // Head Mod
+  "1429034178766180444", // Mod
+  "1429034179747778560", // Helper
+  "1431283077824512112"  // Trial Helper
 ];
 
 export default function staffClaim(client) {
@@ -11,66 +23,44 @@ export default function staffClaim(client) {
     if (!interaction.isButton()) return;
     const { customId, guild, member } = interaction;
 
-    // RECLAMA TICKET
     if (customId.startsWith("claim_")) {
       const channelId = customId.replace("claim_", "");
       const channel = guild.channels.cache.get(channelId);
-      if (!channel) return;
+      
+      if (!channel) return interaction.reply({ content: "❌ Canale non trovato.", ephemeral: true });
 
-      // Solo Staff può reclamare
-      if (!STAFF_ROLES.some(r => member.roles.cache.has(r)))
-        return interaction.reply({ content: "❌ Non sei autorizzato.", ephemeral: true });
+      // Controllo se l'utente ha uno dei ruoli permessi
+      const hasPermission = member.roles.cache.some(role => ALLOWED_CLAIM_ROLES.includes(role.id));
 
-      // Permessi per lo staff nel ticket
+      if (!hasPermission) {
+        return interaction.reply({ content: "❌ Non hai il grado necessario per reclamare questo ticket.", ephemeral: true });
+      }
+
       await channel.permissionOverwrites.edit(member.id, {
-        ViewChannel: true,
-        SendMessages: true,
-        ReadMessageHistory: true
+        ViewChannel: true, SendMessages: true, ReadMessageHistory: true
       });
 
-      // Registra chi lo ha reclamato
       await Ticket.findOneAndUpdate({ channelId }, { claimed: true, staffId: member.id });
 
-      // Messaggio nel ticket
-      await channel.send(`🟢 **L'operatore <@${member.id}> ha preso in carico la conversazione.**`);
+      const claimEmbed = new EmbedBuilder()
+        .setColor("#10b981")
+        .setDescription(`🟢 **L'operatore <@${member.id}> ha preso in carico la richiesta.**`);
 
-      return interaction.reply({ content: "✅ Ticket reclamato correttamente.", ephemeral: true });
+      await channel.send({ embeds: [claimEmbed] });
+      return interaction.reply({ content: `✅ Ticket reclamato.`, ephemeral: true });
     }
   });
 
-  // 🔍 TRACK OPERATORE SE LASCIA
+  // Track se operatore esce
   client.on("channelUpdate", async (oldChannel, newChannel) => {
     if (!newChannel.name.startsWith("ticket-")) return;
-
     const ticket = await Ticket.findOne({ channelId: newChannel.id });
     if (!ticket || !ticket.claimed || !ticket.staffId) return;
 
-    const staffMember = await newChannel.guild.members.fetch(ticket.staffId).catch(() => null);
-    if (!staffMember) return;
-
     const hasAccess = newChannel.permissionsFor(ticket.staffId)?.has("ViewChannel");
-
     if (!hasAccess) {
-  await newChannel.send({
-    embeds: [
-      new EmbedBuilder()
-        .setColor("#facc15")
-        .setTitle("🔕 Operatore non più presente")
-        .setDescription(
-          `L'operatore <@${ticket.staffId}> ha lasciato la conversazione.\n\n` +
-          `🟡 Il ticket è ora **in attesa di un nuovo operatore**.\n` +
-          `Se necessiti assistenza immediata, scrivi:\n` +
-          `**voglio parlare con uno staffer** per richiedere di nuovo assegnazione.`
-        )
-        .setTimestamp()
-    ]
-  });
-
-  await Ticket.findOneAndUpdate(
-    { channelId: newChannel.id },
-    { claimed: false, staffId: null }
-  );
-}
-
+        await newChannel.send({ embeds: [new EmbedBuilder().setColor("#facc15").setDescription(`⚠️ L'operatore <@${ticket.staffId}> ha lasciato il ticket.`)]});
+        await Ticket.findOneAndUpdate({ channelId: newChannel.id }, { claimed: false, staffId: null });
+    }
   });
 }
