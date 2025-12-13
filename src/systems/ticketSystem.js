@@ -2,7 +2,7 @@ import { ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, Butt
 import Ticket from "../core/models/Ticket.js";
 
 // 🟢 CANALE LOG STAFF (ID Corretto da te indicato)
-const STAFF_LOG_CHANNEL = "1435285738185953390"; 
+const STAFF_LOG_CHANNEL = "1435294808045256704"; 
 
 // ─────────────────────────────────────────────
 // 👑 CONFIGURAZIONE RUOLI
