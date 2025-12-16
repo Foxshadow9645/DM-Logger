@@ -1,6 +1,6 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { PermissionFlagsBits } from "discord.js";
 
-// 🎨 LISTA DEI 20 COLORI (GRADIENTI & AESTHETIC)
+// 🎨 LISTA DEI 20 COLORI
 const COLORS_TO_CREATE = [
     // --- ROSSI & ARANCIO ---
     { name: "🍒・Cherry Red", hex: "#FF0055" },
@@ -36,40 +36,41 @@ const COLORS_TO_CREATE = [
 ];
 
 export default {
-    // Definizione dello Slash Command
-    data: new SlashCommandBuilder()
-        .setName('setup-colors')
-        .setDescription('Crea automaticamente 20 ruoli colore e restituisce la configurazione.')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator), // 🛡️ Visibile solo agli Admin
-
+    name: 'setup-colors',
+    description: 'Crea automaticamente 20 ruoli colore e restituisce la configurazione.',
+    
     async execute(interaction) {
-        // Usiamo deferReply perché creare 20 ruoli potrebbe richiedere più di 3 secondi
+        // Controllo permessi manuale (compatibile con il tuo sistema attuale)
+        if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+            return interaction.reply({ content: "❌ **Accesso Negato.**", ephemeral: true });
+        }
+
         await interaction.deferReply({ ephemeral: false });
 
         let configOutput = "// 4. COLORI (Copia questo blocco in roleSelector.js)\nconst COLOR_ROLES = {\n";
         let createdCount = 0;
         let foundCount = 0;
+        const guild = interaction.guild;
 
         try {
-            const guild = interaction.guild;
-
             for (const color of COLORS_TO_CREATE) {
-                // Controlla se il ruolo esiste già
+                // Cerca se esiste
                 let role = guild.roles.cache.find(r => r.name === color.name);
 
                 if (!role) {
+                    // Crea se non esiste
                     role = await guild.roles.create({
                         name: color.name,
                         color: color.hex,
                         reason: "Setup Automatico Colori DM Logger",
-                        permissions: [] // Nessun permesso, solo estetico
+                        permissions: [] 
                     });
                     createdCount++;
                 } else {
                     foundCount++;
                 }
 
-                // Costruiamo la stringa di configurazione
+                // Genera la riga di config
                 const emoji = color.name.split("・")[0]; 
                 const label = color.name.split("・")[1]; 
                 
@@ -78,17 +79,17 @@ export default {
 
             configOutput += "};";
 
-            // Modifichiamo la risposta iniziale con il risultato
+            // Risposta finale
             await interaction.editReply({
-                content: `✅ **Setup Completato!**\n🆕 Creati: **${createdCount}**\n🔎 Trovati: **${foundCount}**\n\n👇 **Copia il codice qui sotto in \`src/systems/roleSelector.js\`**`
+                content: `✅ **Setup Completato!**\n🆕 Creati: **${createdCount}**\n🔎 Trovati: **${foundCount}**`
             });
             
-            // Inviamo il blocco di codice in un messaggio separato per facilitare la copia
+            // Invia il codice in un messaggio separato
             await interaction.channel.send(`\`\`\`javascript\n${configOutput}\n\`\`\``);
 
         } catch (error) {
             console.error(error);
-            await interaction.editReply("❌ Errore durante la creazione dei ruoli. Controlla la console.");
+            await interaction.editReply("❌ Errore durante la creazione dei ruoli.");
         }
     }
 };
