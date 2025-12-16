@@ -1,33 +1,36 @@
 import { getSmartReply } from "../ai/groqHandler.js"; 
 import Ticket from "../core/models/Ticket.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "discord.js";
+import { performClose } from "./ticketClose.js"; // 👈 Importiamo la funzione di chiusura da sopra
 
-// 🔴 CANALE TICKET ALERT (Richieste Operatore)
+// Configurazione
 const TICKET_ALERT_CHANNEL = "1435285738185953390"; 
 
-// Ruoli Staff & Tag
+// Ruoli Staff da ignorare (IA muta con loro)
+const STAFF_ROLES_IDS = [
+  "1413141862906331176", "1429034156326912124", "1429034157467635802", 
+  "1429034166229663826", "1429034167781294080", "1429034175171792988", 
+  "1429034176014843944", "1429034177898086491", "1429034178766180444", 
+  "1429034179747778560", "1431283077824512112", "1434591845370957875"
+];
+
+// Mappa Ruoli per i Tag
 const ROLES = {
   PARTNERSHIP: "1434591845370957875",
-  HOLDER: "1413141862906331176",
   FOUNDER: "1429034156326912124",
   CEO: "1429034157467635802",
   EXECUTIVE: "1429034166229663826",
-  DIRECTOR: "1429034167781294080",
-  HEAD_ADMIN: "1429034175171792988",
   ADMIN: "1429034176014843944",
-  HEAD_MOD: "1429034177898086491",
+  HEAD_ADMIN: "1429034175171792988",
   MOD: "1429034178766180444",
+  HEAD_MOD: "1429034177898086491",
   HELPER: "1429034179747778560",
   TRIAL_HELPER: "1431283077824512112"
 };
 
-const STAFF_ROLES_IDS = Object.values(ROLES);
-
 export default function aiListener(client) {
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.guild) return;
-    
-    // Staff ignorato dall'IA
     if (message.member && message.member.roles.cache.some(r => STAFF_ROLES_IDS.includes(r.id))) return;
     
     const channel = message.channel;
@@ -40,12 +43,14 @@ export default function aiListener(client) {
     if (ticket.claimed === true && !isTagged) return;
 
     const content = message.content.trim().toLowerCase();
-    
-    // Comando Chiusura Manuale
+
+    // ─────────────────────────────────────────────
+    // 1. CHIUSURA MANUALE (Comando Testuale)
+    // ─────────────────────────────────────────────
     if (isTagged && (content.includes("chiudi") || content.includes("close"))) {
-        await message.reply("Ricevuto. Chiudo il ticket.");
-        await Ticket.findOneAndUpdate({ channelId: channel.id }, { status: "closed", staffId: null, claimed: false });
-        setTimeout(() => channel.delete().catch(() => {}), 5000);
+        await message.reply("Ricevuto. Sto archiviando il ticket...");
+        // Usa la funzione condivisa per inviare transcript a tutti
+        await performClose(client, channel, message.guild, message.author);
         return; 
     }
 
@@ -53,20 +58,23 @@ export default function aiListener(client) {
 
     await channel.sendTyping();
 
-    // Generazione AI
+    // ─────────────────────────────────────────────
+    // 2. RISPOSTA INTELLIGENTE (AI)
+    // ─────────────────────────────────────────────
     const contextInfo = `DATI TECNICI: Utente: ${message.author.username} - Tipo: ${ticket.type}`;
     let reply = await getSmartReply(message.author.id, message.content, contextInfo);
     reply = reply.replace(/\[CONTESTO.*?\]/g, "").replace(/DATI TECNICI.*?/g, "").trim();
 
-    // Trigger Chiusura
+    // A. TRIGGER CHIUSURA DA AI
     if (reply.includes("TRIGGER_TICKET_CLOSE")) {
-        await message.reply(reply.replace("TRIGGER_TICKET_CLOSE", "").trim() || "Chiudo il ticket.");
-        await Ticket.findOneAndUpdate({ channelId: channel.id }, { status: "closed" });
-        setTimeout(() => channel.delete().catch(() => {}), 5000);
+        const cleanMsg = reply.replace("TRIGGER_TICKET_CLOSE", "").trim();
+        await message.reply(cleanMsg || "Chiudo il ticket come richiesto.");
+        // Chiude e invia transcript (Executor è null perché è l'IA)
+        await performClose(client, channel, message.guild, null); 
         return;
     }
 
-    // Trigger Chiamata Staff
+    // B. TRIGGER STAFF CALL
     if (reply.includes("TRIGGER_STAFF_CALL")) {
         const parts = reply.split("TRIGGER_STAFF_CALL:");
         const userMsg = parts[0].trim() || "Chiedo supporto a un operatore.";
@@ -74,39 +82,28 @@ export default function aiListener(client) {
 
         await message.reply(userMsg);
 
-        // ─────────────────────────────────────────────
-        // 🧠 LOGICA DI TAGGING INTELLIGENTE
-        // ─────────────────────────────────────────────
+        // Calcolo Ruoli da Taggare
         let rolesToPing = [];
         const isPartnership = ticket.type && ticket.type.toLowerCase().includes("partnership");
 
         if (isPartnership) {
-            // 🔒 CASO PARTNERSHIP: Tagga SOLO il manager, ignora richieste specifiche
             rolesToPing.push(ROLES.PARTNERSHIP);
         } else {
-            // 🔓 CASO STANDARD: Cerca ruolo specifico
             let specificFound = false;
-
-            if (staffReason.includes("founder") || staffReason.includes("fondatore")) { rolesToPing.push(ROLES.FOUNDER); specificFound = true; }
+            if (staffReason.includes("founder")) { rolesToPing.push(ROLES.FOUNDER); specificFound = true; }
             if (staffReason.includes("ceo")) { rolesToPing.push(ROLES.CEO); specificFound = true; }
             if (staffReason.includes("admin")) { rolesToPing.push(ROLES.ADMIN, ROLES.HEAD_ADMIN); specificFound = true; }
             if (staffReason.includes("mod")) { rolesToPing.push(ROLES.MOD, ROLES.HEAD_MOD); specificFound = true; }
 
-            // Se NON ha chiesto un ruolo specifico, tagga i competenti di base
             if (!specificFound) {
-                 if (ticket.type.toLowerCase().includes("high")) {
-                    rolesToPing.push(ROLES.FOUNDER, ROLES.CEO, ROLES.EXECUTIVE);
-                 } else {
-                    rolesToPing.push(ROLES.HELPER, ROLES.TRIAL_HELPER);
-                 }
+                 if (ticket.type.toLowerCase().includes("high")) rolesToPing.push(ROLES.FOUNDER, ROLES.CEO, ROLES.EXECUTIVE);
+                 else rolesToPing.push(ROLES.HELPER, ROLES.TRIAL_HELPER);
             }
         }
 
-        // Rimuove duplicati
         rolesToPing = [...new Set(rolesToPing)];
         const mentions = rolesToPing.map(id => `<@&${id}>`).join(" ");
 
-        // Invio Alert
         const alertChannel = client.channels.cache.get(TICKET_ALERT_CHANNEL);
         if (alertChannel) {
              const alertEmbed = new EmbedBuilder()
@@ -115,8 +112,7 @@ export default function aiListener(client) {
                 .setDescription(`L'IA ha inoltrato una richiesta manuale.`)
                 .addFields(
                     { name: "Ticket", value: `<#${channel.id}>`, inline: true },
-                    { name: "Motivo", value: staffReason, inline: true },
-                    { name: "Reparto", value: isPartnership ? "🤝 Partnership" : "🛠️ Supporto", inline: true }
+                    { name: "Motivo", value: staffReason, inline: true }
                 )
                 .setTimestamp();
             
