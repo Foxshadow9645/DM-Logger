@@ -34,7 +34,6 @@ import inviteHandler from "./handlers/invites.js";
 // 🧠 SISTEMI AVANZATI
 // ─────────────────────────────────────────────
 import ticketSystem from "./systems/ticketSystem.js";
-import roleSelector from './systems/roleSelector.js';
 import staffClaim from "./systems/staffClaim.js";
 import ticketAddUser from "./systems/ticketAddUser.js";
 import ticketClose from "./systems/ticketClose.js";
