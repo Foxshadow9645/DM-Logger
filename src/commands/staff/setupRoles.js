@@ -1,5 +1,4 @@
 import { 
-    SlashCommandBuilder,
     EmbedBuilder, 
     ActionRowBuilder, 
     StringSelectMenuBuilder, 
@@ -11,17 +10,20 @@ const BANNER_URL = "https://i.imgur.com/7wQ7W4V.gif"; // Banner GIF futuristica
 const EMBED_COLOR = 0xFFD700; // Oro Militare
 
 export default {
-    // Definizione Slash Command
-    data: new SlashCommandBuilder()
-        .setName('setup-roles')
-        .setDescription('Genera il pannello interattivo per i Self-Roles')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator), // Solo Admin
-
+    // ⚠️ STRUTTURA COMPATIBILE CON IL TUO LOADER ATTUALE
+    name: 'setup-roles',
+    description: 'Genera il pannello interattivo per i Self-Roles',
+    
     async execute(interaction) {
-        // 1. Rispondiamo "di nascosto" all'admin per dire che stiamo lavorando
+        // Controllo manuale permessi (come abbiamo fatto per i colori)
+        if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+            return interaction.reply({ content: "❌ **Accesso Negato.**", ephemeral: true });
+        }
+
+        // 1. Rispondiamo "di nascosto" all'admin
         await interaction.deferReply({ ephemeral: true });
 
-        // 2. Creazione Embed (Stile Militare/Cyber)
+        // 2. Creazione Embed
         const embed = new EmbedBuilder()
             .setTitle("📡 CENTRO ASSEGNAZIONE RUOLI")
             .setDescription(
@@ -44,7 +46,6 @@ export default {
             .setTimestamp();
 
         // 3. Creazione Menu a Tendina
-        // IMPORTANTE: Il customId 'roles_main_menu' deve combaciare con roleSelector.js
         const selectMenu = new StringSelectMenuBuilder()
             .setCustomId('roles_main_menu') 
             .setPlaceholder('🔻 Seleziona una Categoria di Accesso')
@@ -83,13 +84,13 @@ export default {
 
         const row = new ActionRowBuilder().addComponents(selectMenu);
 
-        // 4. Invio del pannello nel canale (Visibile a tutti)
+        // 4. Invio del pannello nel canale
         await interaction.channel.send({ 
             embeds: [embed], 
             components: [row] 
         });
 
-        // 5. Conferma all'admin (Visibile solo a te)
-        await interaction.editReply("✅ **Pannello Ruoli generato con successo in questo canale!**");
+        // 5. Conferma di successo
+        await interaction.editReply("✅ **Pannello Ruoli generato con successo!**");
     }
 };
