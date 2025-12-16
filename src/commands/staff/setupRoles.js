@@ -6,7 +6,7 @@ import {
 } from "discord.js";
 
 // 🖼️ CONFIGURAZIONE ESTETICA
-const BANNER_URL = "https://i.imgur.com/7wQ7W4V.gif"; // Banner GIF futuristica
+const BANNER_URL = "https://tenor.com/view/rainbow-banner-gif-22792569"; // Banner GIF futuristica
 const EMBED_COLOR = 0xFFD700; // Oro Militare
 
 export default {
