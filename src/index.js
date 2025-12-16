@@ -39,6 +39,7 @@ import ticketAddUser from "./systems/ticketAddUser.js";
 import ticketClose from "./systems/ticketClose.js";
 import aiListener from "./systems/aiListener.js"; // Sistema AI Integrato
 import autoSecurity from "./systems/autoSecurity.js";
+import roleSelector from "./systems/roleSelector.js";
 import commandChecker from "./systems/commandChecker.js";
 
 // ─────────────────────────────────────────────
@@ -207,6 +208,7 @@ inviteHandler(client, WEBHOOKS);
 // 🧠 SISTEMI INTELLIGENTI
 // ─────────────────────────────────────────────
 ticketSystem(client);
+roleSelector(client);
 staffClaim(client);
 aiListener(client);
 autoSecurity(client);
