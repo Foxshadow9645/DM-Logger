@@ -6,7 +6,7 @@ import { performClose } from "./ticketClose.js"; // 👈 Importiamo la funzione 
 // Configurazione
 const TICKET_ALERT_CHANNEL = "1435285738185953390"; 
 
-// Ruoli Staff da ignorare (IA muta con loro)
+// Ruoli Staff da ignorare (l'IA non risponde a loro)
 const STAFF_ROLES_IDS = [
   "1413141862906331176", "1429034156326912124", "1429034157467635802", 
   "1429034166229663826", "1429034167781294080", "1429034175171792988", 
@@ -30,6 +30,7 @@ const ROLES = {
 
 export default function aiListener(client) {
   client.on("messageCreate", async (message) => {
+    // Controlli preliminari
     if (message.author.bot || !message.guild) return;
     if (message.member && message.member.roles.cache.some(r => STAFF_ROLES_IDS.includes(r.id))) return;
     
@@ -39,6 +40,7 @@ export default function aiListener(client) {
     const ticket = await Ticket.findOne({ channelId: channel.id });
     if (!ticket) return;
 
+    // Se ticket reclamato, IA muta (tranne se taggata)
     const isTagged = message.mentions.has(client.user);
     if (ticket.claimed === true && !isTagged) return;
 
@@ -47,9 +49,12 @@ export default function aiListener(client) {
     // ─────────────────────────────────────────────
     // 1. CHIUSURA MANUALE (Comando Testuale)
     // ─────────────────────────────────────────────
-    if (isTagged && (content.includes("chiudi") || content.includes("close"))) {
-        await message.reply("Ricevuto. Sto archiviando il ticket...");
-        // Usa la funzione condivisa per inviare transcript a tutti
+    if (isTagged && (content.includes("chiudi") || content.includes("close") || content.includes("fine"))) {
+        await message.reply("Ricevuto.");
+        // Messaggio di stato salvataggio
+        await channel.send("⏳ **Sto salvando la chat (HTML + TXT) e chiudendo il ticket...**");
+        
+        // Esegue chiusura
         await performClose(client, channel, message.guild, message.author);
         return; 
     }
@@ -59,7 +64,7 @@ export default function aiListener(client) {
     await channel.sendTyping();
 
     // ─────────────────────────────────────────────
-    // 2. RISPOSTA INTELLIGENTE (AI)
+    // 2. IA GENERATION
     // ─────────────────────────────────────────────
     const contextInfo = `DATI TECNICI: Utente: ${message.author.username} - Tipo: ${ticket.type}`;
     let reply = await getSmartReply(message.author.id, message.content, contextInfo);
@@ -68,8 +73,14 @@ export default function aiListener(client) {
     // A. TRIGGER CHIUSURA DA AI
     if (reply.includes("TRIGGER_TICKET_CLOSE")) {
         const cleanMsg = reply.replace("TRIGGER_TICKET_CLOSE", "").trim();
+        
+        // 1. Risposta dell'IA (es. "Va bene, chiudo.")
         await message.reply(cleanMsg || "Chiudo il ticket come richiesto.");
-        // Chiude e invia transcript (Executor è null perché è l'IA)
+        
+        // 2. Messaggio di Avviso Salvataggio (Richiesto da te)
+        await channel.send("⏳ **Sto salvando la chat (HTML + TXT) e chiudendo il ticket...**");
+
+        // 3. Esecuzione Chiusura
         await performClose(client, channel, message.guild, null); 
         return;
     }
@@ -82,7 +93,7 @@ export default function aiListener(client) {
 
         await message.reply(userMsg);
 
-        // Calcolo Ruoli da Taggare
+        // Calcolo Ruoli
         let rolesToPing = [];
         const isPartnership = ticket.type && ticket.type.toLowerCase().includes("partnership");
 
