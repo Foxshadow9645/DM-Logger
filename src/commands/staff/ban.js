@@ -1,6 +1,7 @@
 import { PermissionFlagsBits, EmbedBuilder } from "discord.js";
 import Log from "../../core/models/Log.js";
-import { error, success } from "../../core/embeds.js"; 
+import { error, success } from "../../core/embeds.js"; // Se hai questi helper, altrimenti usiamo EmbedBuilder standard
+
 
 export default {
   name: "ban",
