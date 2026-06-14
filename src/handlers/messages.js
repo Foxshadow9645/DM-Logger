@@ -2,7 +2,7 @@ import { logEmbed } from "../core/embeds.js";
 import { sendWebhook } from "../core/logger.js";
 import { AuditLogEvent } from "discord.js";
 
-const TARGET_GUILD_ID = "1413141460416598062";
+const TARGET_GUILD_ID = "1143521849783881728";
 const LOGGER_ID = "1429110896910798928"; // ID BOT / WEBHOOK DM Alpha
 const MAX_SNAPSHOTS = 5000;
 const MESSAGE_SNAPSHOT = new Map();

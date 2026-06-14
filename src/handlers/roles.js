@@ -2,7 +2,7 @@ import { logEmbed } from "../core/embeds.js";
 import { sendWebhook } from "../core/logger.js";
 import { AuditLogEvent, PermissionsBitField } from "discord.js";
 
-const TARGET_GUILD_ID = "1413141460416598062";
+const TARGET_GUILD_ID = "1143521849783881728";
 
 export default function roleHandler(client, urls) {
   // ───────────────────────────────

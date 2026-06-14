@@ -1,7 +1,7 @@
 import { logEmbed } from "../core/embeds.js";
 import { sendWebhook } from "../core/logger.js";
 
-const TARGET_GUILD_ID = "1413141460416598062";
+const TARGET_GUILD_ID = "1143521849783881728";
 
 const invitesCache = new Map();
 
